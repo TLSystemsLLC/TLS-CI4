@@ -21,27 +21,28 @@ class Database extends Config
 
     /**
      * The default database connection.
+     * SQL Server configuration for TLS Operations
      *
      * @var array<string, mixed>
      */
     public array $default = [
         'DSN'          => '',
-        'hostname'     => 'localhost',
-        'username'     => '',
-        'password'     => '',
-        'database'     => '',
-        'DBDriver'     => 'MySQLi',
+        'hostname'     => '35.226.40.170',
+        'username'     => 'Admin',
+        'password'     => 'Aspen4Home!',
+        'database'     => 'DEMO', // Default database, will be switched per customer
+        'DBDriver'     => 'SQLSRV',
         'DBPrefix'     => '',
         'pConnect'     => false,
         'DBDebug'      => true,
-        'charset'      => 'utf8mb4',
-        'DBCollat'     => 'utf8mb4_general_ci',
+        'charset'      => 'utf8',
+        'DBCollat'     => '',
         'swapPre'      => '',
         'encrypt'      => false,
         'compress'     => false,
         'strictOn'     => false,
         'failover'     => [],
-        'port'         => 3306,
+        'port'         => 1433,
         'numberNative' => false,
         'foundRows'    => false,
         'dateFormat'   => [

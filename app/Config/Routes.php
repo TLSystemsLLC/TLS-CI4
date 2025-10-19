@@ -7,3 +7,11 @@ use CodeIgniter\Router\RouteCollection;
  */
 $routes->get('/', 'Home::index');
 $routes->get('/home/test', 'Home::test');
+
+// Authentication routes
+$routes->get('/login', 'Login::index');
+$routes->post('/login/attempt', 'Login::attempt');
+$routes->get('/logout', 'Login::logout');
+
+// Dashboard (requires authentication)
+$routes->get('/dashboard', 'Dashboard::index');

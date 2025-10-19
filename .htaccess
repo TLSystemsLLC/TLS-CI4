@@ -1,0 +1,10 @@
+# Redirect all requests to public folder
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Don't rewrite if already in public folder
+    RewriteCond %{REQUEST_URI} !^/tls-ci4/public/
+
+    # Redirect everything to public folder
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

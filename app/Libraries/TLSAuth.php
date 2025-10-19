@@ -314,10 +314,11 @@ class TLSAuth
      *
      * @param string $redirectUrl URL to redirect to for login
      */
-    public function requireAuth(string $redirectUrl = '/tls-ci4/public/login'): void
+    public function requireAuth(string $redirectUrl = '/login'): void
     {
         if (!$this->isLoggedIn()) {
-            return redirect()->to($redirectUrl)->send();
+            redirect()->to($redirectUrl)->send();
+            exit;
         }
     }
 }

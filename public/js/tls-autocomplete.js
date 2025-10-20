@@ -118,6 +118,9 @@ class TLSAutocomplete {
             case 'users':
                 url = `/tls-ci4/systems/user-maintenance/autocomplete?term=${encodeURIComponent(query)}`;
                 break;
+            case 'agents':
+                url = `/tls-ci4/safety/agent-maintenance/autocomplete?term=${encodeURIComponent(query)}`;
+                break;
             default:
                 console.error('Unknown API type:', this.apiType);
                 return;

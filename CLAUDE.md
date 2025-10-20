@@ -28,6 +28,40 @@ This repository contains the **CodeIgniter 4 migration** of TLS Operations, migr
 - Database connections follow connect-execute-disconnect pattern
 - Authentication uses `spUser_Login`, menu security uses `spUser_Menus` and `spUser_Menu`
 
+### Critical Database Conventions
+
+**⚠️ MANDATORY: Null Date Convention**
+- SQL Server uses `'1899-12-30 00:00:00.000'` to represent "no date" or "null date"
+- This date appears in StartDate, EndDate, HireDate, TerminationDate, etc.
+- **NEVER use the ACTIVE column to determine if a record is active**
+- **ALWAYS check EndDate to determine active status:**
+  - Active: `EndDate IS NULL OR EndDate = '1899-12-30'`
+  - Inactive: `EndDate IS NOT NULL AND EndDate != '1899-12-30'`
+- When saving empty dates, convert to `'1899-12-30'` before calling stored procedures
+- When displaying dates, check if date equals `'1899-12-30'` and show as empty
+
+**Example Usage:**
+```php
+// Check if agent is active
+if (empty($agent['EndDate']) || $agent['EndDate'] == '1899-12-30 00:00:00.000') {
+    // Agent is active
+}
+
+// Save empty date
+$endDate = !empty($formData['end_date']) ? $formData['end_date'] : '1899-12-30';
+```
+
+**IMPORTANT:** The ACTIVE column exists in many tables but is NOT reliable. Customers do not maintain this field. Always use date fields to determine status.
+
+**Maintaining ACTIVE Flag Going Forward:**
+- When saving records, automatically set ACTIVE based on EndDate:
+  ```php
+  $isActive = ($endDate === '1899-12-30' || empty($endDate)) ? 1 : 0;
+  ```
+- Display ACTIVE checkbox as readonly/disabled with note "(auto-set by End Date)"
+- This gradually corrects the data as records are edited
+- Never rely on ACTIVE for queries - always use EndDate
+
 ### Multi-Tenant Architecture
 
 **Automatic Database Context Management:**
@@ -799,21 +833,72 @@ public function applyRoleTemplate();  // AJAX: Apply role template
 **Working URL:**
 - http://localhost:8888/tls-ci4/systems/user-security
 
-### 📋 Phase 6: Additional Entity Maintenance Screens (NEXT)
-**Goal:** Build additional entity maintenance screens using established patterns
+### ✅ Phase 6: Agent Maintenance - Step 1 (COMPLETE)
+**Goal:** Build Agent Maintenance as template for entity maintenance screens
 
-**Suggested Next:** Driver Maintenance (proof-of-concept for stored procedure pattern)
-1. Create DriverMaintenance controller
-2. Build search interface with autocomplete (reuse TLSAutocomplete)
-3. Implement CRUD operations via stored procedures (standard pattern)
-4. Apply standardized UI theme and two-column layout
-5. Form validation with CI4
-6. Change tracking with TLSFormTracker (already working)
-7. Test complete workflow
+**Implementation:**
+- ✅ **AgentModel** (`app/Models/AgentModel.php`) - Uses stored procedures (spAgent_Get, spAgent_Save)
+- ✅ **AgentMaintenance Controller** (`app/Controllers/AgentMaintenance.php`) - Full CRUD with business rule validation
+- ✅ **Agent Maintenance View** (`app/Views/safety/agent_maintenance.php`) - Two-column responsive layout using CI4 layout template
+- ✅ Routes configured in `app/Config/Routes.php` under 'safety' group
+- ✅ TLSAutocomplete updated for agents API type
 
-**Reference Files:**
-- `/Applications/MAMP/htdocs/tls/safety/driver-maintenance.php` (existing PHP version)
-- VB6 form: `/Users/tonylyle/source/repos/tls/operations/frmDriverMaintenance.frm`
+**Key Features:**
+```php
+// AgentModel - Standard stored procedure pattern
+public function getAgent(int $agentKey): ?array;  // spAgent_Get
+public function saveAgent(array $agentData): bool;  // spAgent_Save (17 parameters)
+public function searchAgentByName(string $name): ?array;  // Direct SQL with EndDate filter
+public function searchAgentsForAutocomplete(string $term, bool $includeInactive): array;
+
+// AgentMaintenance Controller - CRUD with business rules
+public function index();  // Display form
+public function search();  // Search and load agent
+public function save();  // Create or update with validation
+public function load(int $agentKey);  // Load by AgentKey
+public function autocomplete();  // API endpoint for autocomplete
+```
+
+**Critical Business Rule Implemented:**
+- Active = 1 (checked) requires EndDate = empty or '1899-12-30'
+- Active = 0 (unchecked) requires EndDate = real date
+- Server-side validation with user-friendly error messages
+
+**Form Sections:**
+- ✅ **Basic Information:** AgentKey, Name, Start/End dates, Active checkbox, Email, Division
+- ✅ **Pay Information:** Broker%, Fleet%, Company%, Full Freight Pay checkbox
+- ✅ **Tax/ID Information:** PII-protected section with show/hide, SSN/EIN formatting
+- 📋 **Future:** Address (Step 2), Comments (Step 3), Contacts (Step 4)
+
+**Notable Patterns:**
+- **EndDate-based Active Status:** Queries filter by EndDate, not ACTIVE column
+- **ACTIVE Column Maintenance:** Auto-maintained during save based on validation
+- **CI4 Layout Template:** Uses `$this->extend('layouts/main')` with sections (proper pattern)
+- **Lazy Model Initialization:** AgentModel initialized with correct database context
+- **Form Tracking:** TLSFormTracker with change counter (`id="tls-change-counter"`)
+- **Autocomplete:** Reusable TLSAutocomplete component with 'agents' type
+- **Flash Messages:** Session-based success/error notifications
+
+**Completed Testing:**
+- ✅ Search and load agents (by AgentKey and Name)
+- ✅ Autocomplete with partial matches
+- ✅ Change tracking with unsaved changes counter
+- ✅ Form validation
+- ✅ Business rule enforcement (Active/EndDate relationship)
+- ✅ Multi-tenant database context
+
+**Working URL:**
+- http://localhost:8888/tls-ci4/safety/agent-maintenance
+
+**Test Database:**
+- **CWKI2:** Contains agents including "KNOW SOLUTIONS, LLC"
+
+### 📋 Phase 6: Additional Entity Maintenance - Next Steps
+**Step 2:** Add Address management to Agent Maintenance (single address per agent)
+**Step 3:** Add Comments management to Agent Maintenance (unlimited comments)
+**Step 4:** Add Contacts management to Agent Maintenance (complex 3-level chain)
+
+**Future Entities:** Driver, Owner, Customer, Unit (follow Agent Maintenance pattern)
 
 ## Testing
 

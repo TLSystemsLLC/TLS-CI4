@@ -32,5 +32,15 @@ $routes->group('systems', ['filter' => 'auth'], function($routes) {
     $routes->post('user-security/apply-role', 'UserSecurity::applyRoleTemplate');
 });
 
+// Safety routes (require authentication)
+$routes->group('safety', ['filter' => 'auth'], function($routes) {
+    // Agent Maintenance
+    $routes->get('agent-maintenance', 'AgentMaintenance::index');
+    $routes->post('agent-maintenance/search', 'AgentMaintenance::search');
+    $routes->post('agent-maintenance/save', 'AgentMaintenance::save');
+    $routes->get('agent-maintenance/load/(:num)', 'AgentMaintenance::load/$1');
+    $routes->get('agent-maintenance/autocomplete', 'AgentMaintenance::autocomplete');
+});
+
 // Keep test route for development
 $routes->get('/home/test', 'Home::test');

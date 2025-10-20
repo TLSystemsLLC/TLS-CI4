@@ -143,6 +143,85 @@ class DriverMaintenance extends BaseController
 }
 ```
 
+### 5. MenuManager Library (`app/Libraries/MenuManager.php`)
+Pure MVC data provider for navigation menus (Phase 3):
+
+**Design Philosophy:**
+- MenuManager returns **data arrays only** (no HTML generation)
+- Views consume the data and render HTML
+- Clean separation of business logic and presentation
+
+**Methods:**
+- `getMenuStructure()` - Returns filtered menu tree based on user permissions
+- `hasMenuAccess($menuKey)` - Checks if user can access menu (recursive child checking)
+- `getBreadcrumbPath($menuKey)` - Returns breadcrumb trail for current page
+- `getAccessibleMenuCount()` - Count of visible menu items
+- `getAccessibleMenuKeys()` - Array of menu keys user can access
+
+**Permission System:**
+- Reads user permissions from session (loaded by TLSAuth at login via `spUser_Menus`)
+- Session-based caching for performance (users re-login to see permission changes)
+- Automatically hides security permissions (keys starting with 'sec')
+- Shows parent categories if user has access to ANY child menu
+
+**Usage Pattern:**
+```php
+// In BaseController - MenuManager initialized automatically
+$this->menuManager = new MenuManager($this->session);
+
+// In Controller - Use renderView() for automatic menu injection
+return $this->renderView('dashboard/index', $data);
+
+// Manual data retrieval (if needed)
+$menuStructure = $this->menuManager->getMenuStructure();
+$breadcrumbs = $this->menuManager->getBreadcrumbPath('mnuDriverMaint');
+```
+
+**Returned Data Structure:**
+```php
+[
+    [
+        'key' => 'accounting',
+        'label' => 'Accounting',
+        'icon' => 'bi-calculator',
+        'url' => null,
+        'hasAccess' => true,
+        'hasChildren' => true,
+        'items' => [
+            [
+                'key' => 'mnuCOAMaint',
+                'label' => 'Chart of Account Maintenance',
+                'url' => 'accounting/coa-maintenance',
+                'hasAccess' => true,
+                'hasChildren' => false,
+                'items' => []
+            ]
+        ]
+    ]
+]
+```
+
+### 6. Menu Configuration (`app/Config/Menus.php`)
+Defines complete menu hierarchy for the application:
+
+- 8 top-level categories: Accounting, Dispatch, Logistics, Imaging, Reports, Safety, Payroll, Systems
+- 100+ menu items migrated from legacy system
+- Hierarchical structure with unlimited nesting
+- Menu keys match database `MenuKey` values from `tMenu` table
+- URLs map to CI4 routes
+
+**Structure:**
+```php
+public array $structure = [
+    'menuKey' => [
+        'label' => 'Display Text',
+        'icon' => 'bi-icon-class',  // Optional Bootstrap icon
+        'url' => 'route/path',       // Optional route (for leaf items)
+        'items' => [...]             // Optional sub-menus
+    ]
+];
+```
+
 ## Development Environment
 
 ### Two-Location Workflow (CRITICAL)
@@ -562,32 +641,174 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
 - **DEMO Database:** chodge, cknox, cscott, dhatfield, egarcia
 - **TLSYS Database:** SYSTEM, tlyle, wjohnston
 
-### 🔄 Phase 3: MenuManager Migration (NEXT)
-**Goal:** Migrate MenuManager from tls-web to CI4 library
+### ✅ Phase 3: MenuManager Migration (COMPLETE)
+**Goal:** Migrate MenuManager from tls-web to CI4 library using Pure MVC Architecture
 
-**Tasks:**
-1. Create MenuManager library in `app/Libraries/MenuManager.php`
-2. Port menu generation logic from tls-web
-3. Use `spUser_Menus` to get user permissions
-4. Generate responsive Bootstrap 5 navigation
-5. Filter menus based on user permissions
-6. Hide 'sec' prefixed security permissions
-7. Integrate into dashboard and all future pages
+**Implementation:**
+- ✅ **Pure MVC Architecture** - MenuManager returns data arrays only (no HTML generation)
+- ✅ MenuManager library in `app/Libraries/MenuManager.php` (data provider)
+- ✅ Menus configuration in `app/Config/Menus.php` (100+ menu items)
+- ✅ Navigation bar partial in `app/Views/partials/navbar.php` (Bootstrap 5)
+- ✅ Breadcrumb partial in `app/Views/partials/breadcrumb.php`
+- ✅ Main layout template in `app/Views/layouts/main.php`
+- ✅ BaseController integration with automatic menu injection
+- ✅ Session-based permission caching (from `spUser_Menus`)
+- ✅ Recursive child menu access checking
+- ✅ Security permission filtering ('sec' prefix hidden)
+- ✅ Responsive mobile menu (hamburger)
+- ✅ User dropdown with company/database info
 
-**Files to Reference:**
-- `/Applications/MAMP/htdocs/tls/classes/MenuManager.php` (existing)
-- `/Applications/MAMP/htdocs/tls/config/menus.php` (menu structure)
+**Key Features:**
+```php
+// MenuManager returns filtered data structure
+public function getMenuStructure(): array;  // Filtered menu tree
+public function hasMenuAccess(string $key): bool;  // Permission check
+public function getBreadcrumbPath(string $menu): array;  // Breadcrumbs
 
-### 📋 Phase 4: Entity Maintenance Screens (PLANNED)
-**Goal:** Build first entity maintenance screen using CI4 patterns
+// BaseController provides helper methods
+protected function renderView(string $name, array $data = []): string;  // Auto-inject menus
+protected function prepareViewData(array $data = []): array;  // Get menu data
 
-**Suggested Start:** Driver Maintenance (proof-of-concept)
+// Views consume data (pure HTML rendering)
+<?= $this->extend('layouts/main') ?>  // Use layout template
+<?= view('partials/navbar') ?>  // Render navigation
+```
+
+**Architecture Benefits:**
+- ✅ Clean separation: Data (Library) vs Presentation (Views)
+- ✅ No HTML string concatenation in PHP
+- ✅ Easy to modify navigation styling
+- ✅ Testable business logic
+- ✅ Reusable view components
+- ✅ True CI4 MVC patterns
+
+### ✅ Phase 4: User Maintenance (COMPLETE)
+**Goal:** Build User Maintenance screen as first entity maintenance example
+
+**Implementation:**
+- ✅ **UserModel** (`app/Models/UserModel.php`) - Uses direct SQL queries (exception to stored procedure pattern)
+- ✅ **UserMaintenance Controller** (`app/Controllers/UserMaintenance.php`) - Full CRUD operations
+- ✅ **User Maintenance View** (`app/Views/systems/user_maintenance.php`) - Two-column responsive layout
+- ✅ **TLS Autocomplete** (`public/js/tls-autocomplete.js`) - Adapted for CI4 routes
+- ✅ **TLS Form Tracker** (`public/js/tls-form-tracker.js`) - Change tracking and validation
+- ✅ Routes configured in `app/Config/Routes.php` under 'systems' group
+
+**Key Features:**
+```php
+// UserModel - Direct SQL exception to standard pattern
+public function searchUser(string $searchTerm): ?array;  // Search by UserID or UserName
+public function createUser(array $data): bool;  // Create new user
+public function updateUser(string $userId, array $data): bool;  // Update existing
+public function searchUsersForAutocomplete(string $term, bool $includeInactive): array;
+public function getLookupTables(): array;  // Dropdown data
+
+// UserMaintenance Controller - Full CRUD workflow
+public function index();  // Display form
+public function search();  // Search and load user
+public function save();  // Create or update user
+public function load(string $userId);  // Load by UserID
+public function autocomplete();  // API endpoint for autocomplete
+```
+
+**Notable Patterns:**
+- **Exception to Standard:** User Maintenance uses direct SQL queries instead of stored procedures (predates SP standard)
+- **Lazy Model Initialization:** UserModel initialized with correct database context via `getUserModel()` helper
+- **Two-Column Layout:** Responsive design with left/right column sections
+- **Form Tracking:** Real-time change detection with unsaved changes counter
+- **Autocomplete:** Dropdown search with keyboard navigation and inactive user filtering
+- **CI4 Validation:** Built-in validation with error display
+- **Flash Messages:** Session-based success/error notifications
+
+**Completed Testing:**
+- ✅ Search and load users (by UserID and UserName)
+- ✅ Autocomplete with partial matches
+- ✅ Create new users with validation
+- ✅ Update existing users
+- ✅ Include/exclude inactive users filter
+- ✅ Change tracking with unsaved changes warning
+- ✅ Form reset functionality
+- ✅ Multi-tenant database context switching
+
+**Test Credentials (TEST Database):**
+- **testfulluser** / abc1234! - Active user with full permissions
+- **testlimiteduser** / abc1234! - Active user with limited permissions
+- **testnotactive** / abc1234! - Inactive user (shows only with "Include Inactive" checked)
+
+**Working URL:**
+- http://localhost:8888/tls-ci4/systems/user-maintenance
+
+### ✅ Phase 5: User Security (COMPLETE)
+**Goal:** Build User Security management to grant/deny menu permissions per user
+
+**Implementation:**
+- ✅ **UserSecurityModel** (`app/Models/UserSecurityModel.php`) - Optimized permission loading using stored procedures
+- ✅ **UserSecurity Controller** (`app/Controllers/UserSecurity.php`) - AJAX endpoints for loading/saving permissions
+- ✅ **User Security View** (`app/Views/systems/user_security.php`) - Two-column masonry layout with permission cards
+- ✅ Routes configured in `app/Config/Routes.php` under 'systems' group
+
+**Key Features:**
+```php
+// UserSecurityModel - Optimized approach
+public function getAllSecurityItems(): array;  // SELECT DISTINCT from tSecurity
+public function getUserPermissions($userId): array;  // Uses spUser_Menus (1 call vs 150+)
+public function savePermission($userId, $menuKey, $granted): bool;  // spUser_Menu_Save
+public function savePermissionChanges($userId, $changes): int;  // Batch save changes
+public function getRoleTemplate($role): array;  // Get permissions from tSecurityGroups
+public function organizePermissionsByCategory(): array;  // Group by Menus config
+
+// UserSecurity Controller - AJAX endpoints
+public function index();  // Display main page
+public function getUserPermissions();  // AJAX: Load user permissions
+public function savePermissions();  // AJAX: Save permission changes
+public function applyRoleTemplate();  // AJAX: Apply role template
+```
+
+**Performance Optimization:**
+- **Before:** 1 query + 150+ `spUser_Menu` calls = 151+ database operations
+- **After:** 1 DISTINCT query + 1 `spUser_Menus` call = 2 database operations
+- **Result:** ~75x faster initial load
+
+**Notable Features:**
+- ✅ User selection dropdown (from `spUsers_GetAll`)
+- ✅ Permission grid organized by categories (Accounting, Dispatch, Safety, Systems, etc.)
+- ✅ Toggle switches for each permission
+- ✅ **Category-level toggle** - Check/uncheck all permissions in a card (NEW enhancement)
+- ✅ Category checkbox shows three states: all checked, all unchecked, indeterminate (some checked)
+- ✅ Change tracking - only saves modified permissions
+- ✅ Bulk actions (Grant All Visible, Deny All Visible)
+- ✅ Role templates (Dispatch, Broker, Accounting) from tSecurityGroups
+- ✅ Search/filter permissions with real-time filtering
+- ✅ Permission summary stats (X granted, Y denied, Z total)
+- ✅ Category stats showing granted/total per card
+- ✅ Collapse/expand individual categories
+- ✅ Unsaved changes warning with change counter
+- ✅ AJAX for loading/saving without page reload
+- ✅ True masonry layout - cards pack naturally without white space
+
+**Completed Testing:**
+- ✅ User selection and permission loading (fast!)
+- ✅ Individual permission toggles with change tracking
+- ✅ Category toggle all (grant/deny entire card)
+- ✅ Save permission changes
+- ✅ Role template application
+- ✅ Bulk actions (grant all, deny all)
+- ✅ Search/filter functionality
+- ✅ Unsaved changes warning
+- ✅ Multi-tenant database context
+
+**Working URL:**
+- http://localhost:8888/tls-ci4/systems/user-security
+
+### 📋 Phase 6: Additional Entity Maintenance Screens (NEXT)
+**Goal:** Build additional entity maintenance screens using established patterns
+
+**Suggested Next:** Driver Maintenance (proof-of-concept for stored procedure pattern)
 1. Create DriverMaintenance controller
-2. Build search interface with autocomplete
-3. Implement CRUD operations via stored procedures
-4. Apply standardized UI theme
+2. Build search interface with autocomplete (reuse TLSAutocomplete)
+3. Implement CRUD operations via stored procedures (standard pattern)
+4. Apply standardized UI theme and two-column layout
 5. Form validation with CI4
-6. Change tracking with TLSFormTracker
+6. Change tracking with TLSFormTracker (already working)
 7. Test complete workflow
 
 **Reference Files:**
@@ -604,6 +825,7 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
 **Development Testing Databases:**
 - **DEMO**: Contains `spUser_Login`, `spUser_Menus`, active users (chodge, cknox, cscott, dhatfield, egarcia)
 - **TLSYS**: Contains all required stored procedures, active users (SYSTEM, tlyle, wjohnston)
+- **TEST**: Contains test users for User Maintenance testing (testfulluser, testlimiteduser, testnotactive)
 
 ### Authentication Testing
 
@@ -644,6 +866,8 @@ Comprehensive testing guide available in: `TESTING_AUTHENTICATION.md`
 | **Authentication** | Auth class | TLSAuth library + AuthFilter |
 | **Database** | Database class | BaseModel + Query Builder |
 | **Views** | Mixed PHP/HTML | Separate view files |
+| **Menu System** | HTML string generation | Pure MVC (data + view partials) |
+| **Layout System** | Include header/footer | CI4 view layouts + sections |
 | **URL Format** | `/tls/page.php` | `/tls-ci4/page` (clean URLs) |
 | **Base URL** | `/tls/` | `/tls-ci4/` |
 | **CSRF Protection** | Manual | Automatic (CI4) |
@@ -673,6 +897,9 @@ Comprehensive testing guide available in: `TESTING_AUTHENTICATION.md`
 5. ✅ CI4 validation prevents input errors
 6. ✅ TLS theme integrates perfectly with CI4
 7. ✅ Clean URLs achieved with minimal configuration
+8. ✅ Pure MVC menu system (data vs presentation separation)
+9. ✅ View layouts eliminate header/footer duplication
+10. ✅ Session-based permission caching performs well
 
 ### Watch Out For:
 1. ⚠️ Void return types - use `redirect()->send(); exit;` instead of `return redirect()`

@@ -9,6 +9,7 @@ use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use App\Libraries\TLSAuth;
+use App\Libraries\MenuManager;
 
 /**
  * Class BaseController
@@ -60,6 +61,13 @@ abstract class BaseController extends Controller
     protected $db;
 
     /**
+     * Menu Manager instance
+     *
+     * @var MenuManager|null
+     */
+    protected $menuManager;
+
+    /**
      * @return void
      */
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
@@ -79,6 +87,10 @@ abstract class BaseController extends Controller
             if ($customerDb) {
                 $this->db->setDatabase($customerDb);
             }
+
+            // Initialize MenuManager for logged-in users
+            // MenuManager reads user permissions from session (loaded by TLSAuth at login)
+            $this->menuManager = new MenuManager($this->session);
         }
     }
 
@@ -169,5 +181,40 @@ abstract class BaseController extends Controller
         $this->db->setDatabase($customerDb);
 
         return $this->db;
+    }
+
+    /**
+     * Prepare common view data including menu structure
+     * Call this method to get standard data for all views
+     *
+     * @param array $additionalData Additional data to merge
+     * @return array View data with menu structure and user info
+     */
+    protected function prepareViewData(array $additionalData = []): array
+    {
+        $data = $additionalData;
+
+        // Add menu structure if user is logged in
+        if ($this->auth->isLoggedIn() && $this->menuManager) {
+            $data['menuStructure'] = $this->menuManager->getMenuStructure();
+            $data['currentUser'] = $this->getCurrentUser();
+        }
+
+        return $data;
+    }
+
+    /**
+     * Render view with automatic menu data injection
+     * Use this instead of view() to automatically include menu structure
+     *
+     * @param string $name View name
+     * @param array $data View data
+     * @param array $options View options
+     * @return string Rendered view
+     */
+    protected function renderView(string $name, array $data = [], array $options = []): string
+    {
+        $viewData = $this->prepareViewData($data);
+        return view($name, $viewData, $options);
     }
 }

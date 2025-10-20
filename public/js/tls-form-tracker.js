@@ -209,9 +209,8 @@ class TLSFormTracker {
         }
 
         // Update change counter text in banner
-        var changeCounterText = document.getElementById('tls-change-counter-text');
-        if (changeCounterText) {
-            changeCounterText.textContent = this.trackedChanges.length.toString();
+        if (this.changeCounter) {
+            this.changeCounter.textContent = this.trackedChanges.length.toString();
         }
     }
 

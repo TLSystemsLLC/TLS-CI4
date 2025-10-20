@@ -1,21 +1,22 @@
 /**
  * TLS Autocomplete Component
+ * CodeIgniter 4 Version
+ *
  * Provides autocomplete functionality for TLS forms with dropdown selection,
  * keyboard navigation, and API integration.
- * 
+ *
  * Usage:
- * const autocomplete = new TLSAutocomplete(inputElement, hiddenElement, apiType, onSelectCallback);
+ * const autocomplete = new TLSAutocomplete(inputElement, apiType, onSelectCallback);
  */
 class TLSAutocomplete {
-    constructor(inputElement, hiddenElement, apiType, onSelect = null) {
+    constructor(inputElement, apiType, onSelect = null) {
         this.input = inputElement;
-        this.hidden = hiddenElement;
         this.apiType = apiType;
         this.onSelect = onSelect;
         this.resultsContainer = null;
         this.currentIndex = -1;
         this.searchTimeout = null;
-        
+
         this.init();
     }
     
@@ -31,12 +32,21 @@ class TLSAutocomplete {
     createResultsContainer() {
         this.resultsContainer = document.createElement('div');
         this.resultsContainer.className = 'autocomplete-results position-absolute bg-white border rounded shadow-sm w-100';
+        this.resultsContainer.style.top = '100%'; // Position below the input
+        this.resultsContainer.style.left = '0';
         this.resultsContainer.style.zIndex = '1050';
         this.resultsContainer.style.maxHeight = '300px';
         this.resultsContainer.style.overflowY = 'auto';
         this.resultsContainer.style.display = 'none';
-        this.input.parentNode.style.position = 'relative';
-        this.input.parentNode.appendChild(this.resultsContainer);
+
+        // Find the nearest position-relative parent, or use input's parent
+        let positionParent = this.input.closest('.position-relative');
+        if (!positionParent) {
+            positionParent = this.input.parentNode;
+            positionParent.style.position = 'relative';
+        }
+
+        positionParent.appendChild(this.resultsContainer);
     }
     
     handleInput(e) {
@@ -102,22 +112,34 @@ class TLSAutocomplete {
     }
     
     search(query) {
-        let url = `/tls/api/lookup.php?type=${this.apiType}&q=${encodeURIComponent(query)}`;
-        
-        // Add include_inactive parameter if checkbox is checked
-        const includeInactive = document.getElementById('include_inactive')?.checked || false;
-        if (includeInactive) {
-            url += '&include_inactive=true';
+        // Build API URL based on type - CI4 routes
+        let url = '';
+        switch (this.apiType) {
+            case 'users':
+                url = `/tls-ci4/systems/user-maintenance/autocomplete?term=${encodeURIComponent(query)}`;
+                break;
+            default:
+                console.error('Unknown API type:', this.apiType);
+                return;
         }
-        
+
+        // Add include_inactive parameter if checkbox is checked
+        const includeInactive = document.getElementById('includeInactive')?.checked || false;
+        if (includeInactive) {
+            url += '&include_inactive=1';
+        }
+
         // Show loading indicator
         this.showLoading(true);
         this.updateStatus('Searching...');
-        
+
         console.log('Fetching:', url);
         fetch(url)
             .then(response => {
                 console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
                 return response.json();
             })
             .then(data => {
@@ -141,42 +163,45 @@ class TLSAutocomplete {
     displayResults(results) {
         this.resultsContainer.innerHTML = '';
         this.currentIndex = -1;
-        
+
         if (results.length === 0) {
-            this.hideResults();
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item p-2 text-muted';
+            div.innerHTML = 'No results found';
+            this.resultsContainer.appendChild(div);
+            this.showResults();
             return;
         }
-        
+
         results.forEach((item, index) => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item p-2 border-bottom';
             div.style.cursor = 'pointer';
-            div.innerHTML = item.label;
+            // Show label with inactive badge if applicable
+            div.innerHTML = item.label + (item.active === false ? ' <span class="badge bg-secondary">Inactive</span>' : '');
             div.dataset.item = JSON.stringify(item);
-            
+
             div.addEventListener('click', () => {
                 this.selectItem(item);
             });
-            
+
             div.addEventListener('mouseenter', () => {
                 this.currentIndex = index;
                 this.updateSelection(this.resultsContainer.querySelectorAll('.autocomplete-item'));
             });
-            
+
             this.resultsContainer.appendChild(div);
         });
-        
+
         this.showResults();
     }
-    
+
     selectItem(item) {
         console.log('Selecting item:', item);
-        this.input.value = item.label;
-        this.hidden.value = item.id;
-        console.log('Set hidden field value to:', item.id);
+        this.input.value = item.value || item.id;
         this.hideResults();
         this.updateStatus(this.getSelectedMessage(item));
-        
+
         if (this.onSelect) {
             this.onSelect(item);
         }

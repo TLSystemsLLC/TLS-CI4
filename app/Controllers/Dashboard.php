@@ -23,6 +23,7 @@ class Dashboard extends BaseController
             'user' => $user
         ];
 
-        return view('dashboard/index', $data);
+        // Use renderView to automatically inject menu structure
+        return $this->renderView('dashboard/index', $data);
     }
 }

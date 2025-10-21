@@ -30,6 +30,28 @@ $routes->group('systems', ['filter' => 'auth'], function($routes) {
     $routes->post('user-security/get-permissions', 'UserSecurity::getUserPermissions');
     $routes->post('user-security/save-permissions', 'UserSecurity::savePermissions');
     $routes->post('user-security/apply-role', 'UserSecurity::applyRoleTemplate');
+
+    // Company & Division Maintenance
+    $routes->get('company-division-maintenance', 'CompanyDivisionMaintenance::index');
+    $routes->get('company-division-maintenance/load-company/(:num)', 'CompanyDivisionMaintenance::loadCompany/$1');
+    $routes->post('company-division-maintenance/save-company', 'CompanyDivisionMaintenance::saveCompany');
+    $routes->post('company-division-maintenance/create-company', 'CompanyDivisionMaintenance::createNewCompany');
+
+    // Division endpoints
+    $routes->get('company-division-maintenance/divisions/(:num)', 'CompanyDivisionMaintenance::getDivisions/$1');
+    $routes->get('company-division-maintenance/division/(:num)/(:num)', 'CompanyDivisionMaintenance::loadDivision/$1/$2');
+    $routes->post('company-division-maintenance/save-division', 'CompanyDivisionMaintenance::saveDivision');
+    $routes->post('company-division-maintenance/create-division', 'CompanyDivisionMaintenance::createNewDivision');
+
+    // Department endpoints
+    $routes->get('company-division-maintenance/departments/(:num)/(:num)', 'CompanyDivisionMaintenance::getDepartments/$1/$2');
+    $routes->post('company-division-maintenance/save-department', 'CompanyDivisionMaintenance::saveDepartment');
+    $routes->delete('company-division-maintenance/delete-department/(:num)/(:num)/(:num)', 'CompanyDivisionMaintenance::deleteDepartment/$1/$2/$3');
+
+    // Team endpoints
+    $routes->get('company-division-maintenance/teams/(:num)/(:num)', 'CompanyDivisionMaintenance::getTeams/$1/$2');
+    $routes->post('company-division-maintenance/save-team', 'CompanyDivisionMaintenance::saveTeam');
+    $routes->delete('company-division-maintenance/delete-team/(:num)', 'CompanyDivisionMaintenance::deleteTeam/$1');
 });
 
 // Safety routes (require authentication)

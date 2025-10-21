@@ -554,6 +554,10 @@ class Menus extends BaseConfig
                     'label' => 'User Security',
                     'url' => 'systems/user-security',
                 ],
+                'mnuCompanyDivisionMaint' => [
+                    'label' => 'Company & Division Maintenance',
+                    'url' => 'systems/company-division-maintenance',
+                ],
                 'mnuEDIUserProfile' => [
                     'label' => 'EDI User Profile',
                 ],

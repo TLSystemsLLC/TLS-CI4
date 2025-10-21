@@ -279,6 +279,85 @@ class AgentMaintenance extends BaseController
     }
 
     /**
+     * Create new agent with confirmation
+     * Generates AgentKey immediately and creates minimal agent record
+     * This allows dependent objects (Address, Contacts, Comments) to be added
+     *
+     * @return \CodeIgniter\HTTP\ResponseInterface JSON response with new AgentKey
+     */
+    public function createNewAgent()
+    {
+        // Require authentication and permission
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+
+        // Get database with guaranteed tenant context
+        $db = $this->getCustomerDb();
+
+        try {
+            // Create minimal agent data with defaults
+            $agentData = [
+                'AgentKey' => 0,  // Will trigger getNextKey in saveAgent
+                'Name' => 'New Agent',
+                'Active' => 1,
+                'StartDate' => date('Y-m-d'),
+                'EndDate' => '',
+                'Email' => '',
+                'Division' => 1,
+                'BrokerPct' => 0,
+                'FleetPct' => 0,
+                'CompanyPct' => 0,
+                'FullFreightPay' => 0,
+                'TaxID' => '',
+                'IDType' => 'O'
+            ];
+
+            // Save the agent to get a real AgentKey
+            $saved = $this->getAgentModel()->saveAgent($agentData);
+
+            if ($saved) {
+                // Get the newly created agent to return the AgentKey
+                // The saveAgent method doesn't return the key, so we need to search for it
+                // Since we just created it with "New Agent" name, find the most recent one
+                $query = $db->query("SELECT TOP 1 AgentKey FROM tAgents WHERE NAME = 'New Agent' ORDER BY AgentKey DESC");
+                $result = $query->getRowArray();
+
+                if ($result && isset($result['AgentKey'])) {
+                    $agentKey = $result['AgentKey'];
+
+                    log_message('info', "Created new agent with AgentKey: {$agentKey}");
+
+                    // Create blank address for the new agent
+                    $blankNameKey = $this->getAddressModel()->createBlankAddress('AG');
+                    if ($blankNameKey > 0) {
+                        // Link the address to the agent
+                        $this->getAddressModel()->linkAgentAddress($agentKey, $blankNameKey);
+                        log_message('info', "Created blank address (NameKey: {$blankNameKey}) for new agent {$agentKey}");
+                    }
+
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'agent_key' => $agentKey,
+                        'message' => 'New agent created successfully'
+                    ]);
+                }
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create new agent'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error creating new agent: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Load agent by AgentKey (for redirects after save)
      */
     public function load(int $agentKey)

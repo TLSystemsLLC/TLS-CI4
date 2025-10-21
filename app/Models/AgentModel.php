@@ -91,6 +91,8 @@ class AgentModel extends BaseModel
                 floatval($agentData['CompanyPct'] ?? 0)         // @CompanyPct DECIMAL
             ];
 
+            log_message('info', "spAgent_Save called with params: " . json_encode($params));
+
             $returnCode = $this->callStoredProcedureWithReturn('spAgent_Save', $params);
 
             log_message('info', "spAgent_Save returned: {$returnCode} ({$this->getReturnCodeMessage($returnCode)}) for AgentKey: {$agentKey}");

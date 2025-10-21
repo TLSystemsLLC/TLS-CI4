@@ -1052,13 +1052,153 @@ deleteContact(contactKey); // Delete contact with confirmation
 - **AJAX Pattern:** Same pattern as address management for consistency
 - **Return Code Handling:** Uses `callStoredProcedureWithReturn()` for save/delete operations
 
-### 📋 Phase 6 - Phase Complete
-All Agent Maintenance features have been implemented:
-- ✅ Step 1: Core Agent CRUD
-- ✅ Step 2: Address Management
-- ✅ Step 3: Contact Management
+### ✅ Phase 6 - Step 4: Agent Comment Management (COMPLETE)
+**Goal:** Add comment management to Agent Maintenance
 
-**Next Phase:** Apply this pattern to other entity maintenance screens (Driver, Owner, Customer, Unit)
+**Implementation:**
+- ✅ **CommentModel** (`app/Models/CommentModel.php`) - Comment CRUD using stored procedures with user audit trail
+- ✅ **AgentModel Extended** - Added `getAgentComments()` method
+- ✅ **AgentMaintenance Controller Extended** - Added getComments(), saveComment(), deleteComment() AJAX endpoints
+- ✅ **Agent Maintenance View Extended** - Added comments section, Bootstrap modal, and JavaScript functions
+- ✅ Routes extended in `app/Config/Routes.php` for comment endpoints
+
+**Key Features:**
+```php
+// CommentModel - Standard stored procedure pattern with audit trail
+public function getComment(int $commentKey): ?array;  // spComment_Get (includes CommentBy, CommentDate, EditedBy, EditedDate)
+public function getCommentKeysForAgent(int $agentKey): array;  // spAgentComments_Get
+public function saveComment(array $commentData, int $agentKey): int;  // spComment_Save, returns CommentKey
+public function deleteComment(int $commentKey): bool;  // spComment_Delete
+
+// AgentModel - Comment retrieval
+public function getAgentComments(int $agentKey): array;  // Get all comments for agent
+
+// AgentMaintenance Controller - AJAX endpoints
+public function getComments();  // AJAX: Load comments for agent
+public function saveComment();  // AJAX: Save comment (create or update)
+public function deleteComment();  // AJAX: Delete comment
+```
+
+**Database Structure:**
+- **tComment** - Stores comments (CommentKey, Comment, CommentBy, CommentDate, EditedBy, EditedDate)
+- **tAgents_tComment** - Junction table linking agents to comments (many-to-many)
+- **Stored Procedures:**
+  - `spComment_Get` - Get comment by CommentKey with full audit trail
+  - `spComment_Save` - Save/update comment (3 parameters: @Key, @Comment, @User)
+  - `spComment_Delete` - Delete comment
+  - `spAgentComments_Get` - Get CommentKeys for an agent
+  - `spAgentComments_Save` - Link comment to agent
+
+**UI Features:**
+- Full-width comments section below agent/address/contacts
+- Comments display with user audit trail (CommentBy, CommentDate, EditedBy, EditedDate)
+- "Add Comment" button opens Bootstrap modal
+- Modal with textarea (255 character limit)
+- Edit/Delete buttons for each comment
+- AJAX operations without page reload
+- Auto-loads comments when agent is loaded
+
+**JavaScript Functions:**
+```javascript
+loadAgentComments();       // Load comments for current agent
+displayComments(comments); // Render comments list
+showCommentModal();        // Open modal for new comment
+editComment(commentKey);   // Load comment into modal for editing
+saveComment();             // Save comment via AJAX
+deleteComment(commentKey); // Delete comment with confirmation
+```
+
+**Completed Testing:**
+- ✅ Comment loading via AJAX
+- ✅ Add new comment with user audit
+- ✅ Edit existing comment
+- ✅ Delete comment with confirmation
+- ✅ User and timestamp tracking verified
+- ✅ Only new comments linked via junction table
+
+**Notable Pattern:**
+- **User Audit Trail:** Automatically captures UserID from session for CommentBy/EditedBy
+- **Lazy Model Initialization:** CommentModel initialized with guaranteed database context
+- **AJAX Pattern:** Consistent with address and contact management
+
+### ✅ Phase 6 - Final Enhancement: New Agent Creation Flow (COMPLETE)
+**Goal:** Allow creating new agents with immediate access to dependent objects (Address, Contacts, Comments)
+
+**Problem Solved:**
+- Previously, AgentKey = 0 until save, preventing dependent objects from being added via AJAX
+- Users couldn't add address/contacts/comments until after saving the agent
+
+**Implementation:**
+- ✅ Added `createNewAgent()` endpoint in AgentMaintenance controller
+- ✅ Updated `newAgent()` JavaScript with two-step confirmation
+- ✅ Auto-create blank address for new agents
+- ✅ Modified page header to always show "New Agent" button
+- ✅ Added unsaved changes warning before creating new agent
+
+**Key Features:**
+```php
+// AgentMaintenance Controller - New agent creation
+public function createNewAgent();  // Creates minimal agent, returns AgentKey
+```
+
+**UI/UX Flow:**
+1. User clicks "New Agent" → First confirmation: "Are you sure you want to create a new agent? This will reserve an Agent Key in the database."
+2. If user has unsaved changes → Second confirmation: "You have unsaved changes. Are you sure? All unsaved changes will be lost."
+3. AJAX creates minimal agent record with defaults (Name = "New Agent")
+4. Auto-creates blank address and links to agent
+5. Redirects to load newly created agent
+6. User can immediately add contacts, comments, and edit all fields
+7. User fills out agent details and saves
+
+**Page Header Layout:**
+- **No agent loaded:** `[New Agent]`
+- **Agent loaded:** `[New Agent] [Save Agent] [Reset]`
+- "New Agent" button is always visible using `d-flex gap-2` for spacing
+
+**Completed Testing:**
+- ✅ New agent creation with confirmation
+- ✅ Blank address auto-creation
+- ✅ Immediate access to dependent objects
+- ✅ Unsaved changes warning when switching agents
+- ✅ "New Agent" button always visible
+
+**Critical Fix - spAgent_Save:**
+- Removed lines 107-108 (problematic `IF @@ROWCOUNT = 0 RETURN 97;` after tAgentRotation UPDATE)
+- The tAgentRotation UPDATE is conditional and may legitimately not execute
+- Removed the check to prevent false error code 97 when save actually succeeded
+
+### ✅ Phase 6 - COMPLETE
+**Agent Maintenance is now the official template for all entity maintenance screens**
+
+All features implemented:
+- ✅ Step 1: Core Agent CRUD with business rule validation
+- ✅ Step 2: Address Management with AJAX
+- ✅ Step 3: Contact Management with 3-level chain architecture
+- ✅ Step 4: Comment Management with user audit trail
+- ✅ New Agent Creation Flow with immediate dependent object access
+- ✅ Always-visible "New Agent" button with unsaved changes protection
+
+**Pattern Established:**
+This Agent Maintenance implementation serves as the complete template for:
+- Driver Maintenance
+- Owner Maintenance
+- Customer Maintenance
+- Unit Maintenance
+- Any other entity maintenance screens
+
+**Key Patterns to Replicate:**
+1. **Two-column responsive layout** with CI4 layout templates
+2. **Lazy model initialization** with guaranteed database context
+3. **AJAX operations** for dependent objects without page reload
+4. **Junction tables** for many-to-many relationships
+5. **User audit trails** for comments and changes
+6. **Change tracking** with TLSFormTracker
+7. **Autocomplete search** with TLSAutocomplete
+8. **Business rule validation** server-side with user-friendly messages
+9. **New entity creation flow** with immediate dependent object access
+10. **Always-visible "New" button** with unsaved changes protection
+
+**Next Phase:** Apply this established pattern to other entity maintenance screens
 
 ## Testing
 

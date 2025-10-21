@@ -12,7 +12,12 @@
 <!-- Standardized Page Header -->
 <div class="tls-page-header">
     <h2 class="tls-page-title"><i class="bi-person-badge me-2"></i>Agent Maintenance</h2>
-    <div class="tls-top-actions">
+    <div class="tls-top-actions d-flex gap-2">
+        <!-- New Agent Button (always visible) -->
+        <button type="button" class="btn tls-btn-primary" onclick="newAgent()">
+            <i class="bi-plus me-1"></i> New Agent
+        </button>
+
         <?php if ($agent): ?>
         <!-- Form Action Buttons (shown when agent is loaded) -->
         <button type="button" class="btn tls-btn-primary" id="tls-save-btn" disabled>
@@ -20,11 +25,6 @@
         </button>
         <button type="button" class="btn tls-btn-secondary" id="tls-reset-btn" disabled>
             <i class="bi-arrow-clockwise me-1"></i> Reset
-        </button>
-        <?php else: ?>
-        <!-- New Agent Button (shown when no agent is loaded) -->
-        <button type="button" class="btn tls-btn-primary" onclick="newAgent()">
-            <i class="bi-plus me-1"></i> New Agent
         </button>
         <?php endif; ?>
     </div>
@@ -502,7 +502,40 @@
     });
 
     function newAgent() {
-        window.location.href = '<?= base_url('safety/agent-maintenance') ?>?new=1';
+        <?php if ($agent): ?>
+        // Check for unsaved changes if an agent is currently loaded
+        if (typeof tracker !== 'undefined' && tracker && tracker.hasChanges()) {
+            if (!confirm('You have unsaved changes. Are you sure you want to create a new agent?\n\nAll unsaved changes will be lost.')) {
+                return;
+            }
+        }
+        <?php endif; ?>
+
+        // Confirm before creating new agent (reserves AgentKey)
+        if (!confirm('Are you sure you want to create a new agent?\n\nThis will reserve an Agent Key in the database.')) {
+            return;
+        }
+
+        // Make AJAX call to create the agent and get AgentKey
+        fetch('<?= base_url('safety/agent-maintenance/create-new') ?>', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.agent_key) {
+                // Redirect to load the newly created agent
+                window.location.href = '<?= base_url('safety/agent-maintenance/load') ?>/' + data.agent_key;
+            } else {
+                alert('Failed to create new agent: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error creating new agent:', error);
+            alert('Error creating new agent. Please try again.');
+        });
     }
 
     <?php if ($agent): ?>

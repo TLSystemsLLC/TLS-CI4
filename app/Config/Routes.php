@@ -40,6 +40,8 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
     $routes->post('agent-maintenance/save', 'AgentMaintenance::save');
     $routes->get('agent-maintenance/load/(:num)', 'AgentMaintenance::load/$1');
     $routes->get('agent-maintenance/autocomplete', 'AgentMaintenance::autocomplete');
+    $routes->get('agent-maintenance/get-address', 'AgentMaintenance::getAddress');
+    $routes->post('agent-maintenance/save-address', 'AgentMaintenance::saveAddress');
 });
 
 // Keep test route for development

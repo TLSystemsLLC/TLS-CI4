@@ -198,4 +198,47 @@ class AgentModel extends BaseModel
 
         return $agents;
     }
+
+    /**
+     * Get agent's address (returns first address from junction table)
+     *
+     * @param int $agentKey Agent key
+     * @return array|null Address data or null if not found
+     */
+    public function getAgentAddress(int $agentKey): ?array
+    {
+        if ($agentKey <= 0) {
+            return null;
+        }
+
+        // Get NameKeys linked to this agent
+        $results = $this->callStoredProcedure('spAgentNameAddresses_Get', [$agentKey]);
+
+        // Debug logging
+        log_message('info', 'AgentModel::getAgentAddress - AgentKey: ' . $agentKey);
+        log_message('info', 'AgentModel::getAgentAddress - spAgentNameAddresses_Get results: ' . json_encode($results));
+
+        if (!empty($results) && is_array($results)) {
+            // The stored procedure returns NameKey column
+            // Check if the column exists in the result
+            if (!isset($results[0]['NameKey'])) {
+                log_message('error', 'NameKey column not found in results. Available columns: ' . json_encode(array_keys($results[0])));
+                return null;
+            }
+
+            // Get the first NameKey (agents have exactly 1 address in practice)
+            $nameKey = $results[0]['NameKey'];
+            log_message('info', 'AgentModel::getAgentAddress - Found NameKey: ' . $nameKey);
+
+            // Load the address details
+            $addressModel = new \App\Models\AddressModel();
+            // Ensure the model's database is set to the current customer database
+            $addressModel->db = $this->db;
+
+            return $addressModel->getAddress($nameKey);
+        }
+
+        log_message('info', 'AgentModel::getAgentAddress - No address found for agent');
+        return null;
+    }
 }

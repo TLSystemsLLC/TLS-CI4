@@ -4,11 +4,12 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\AgentModel;
+use App\Models\AddressModel;
 
 /**
  * Agent Maintenance Controller
  *
- * Handles agent creation, editing, and search.
+ * Handles agent creation, editing, and search including address management.
  *
  * @author Tony Lyle
  * @version 1.0 - CI4 Migration
@@ -16,6 +17,7 @@ use App\Models\AgentModel;
 class AgentMaintenance extends BaseController
 {
     private ?AgentModel $agentModel = null;
+    private ?AddressModel $addressModel = null;
 
     /**
      * Get AgentModel instance with correct database context
@@ -34,6 +36,25 @@ class AgentMaintenance extends BaseController
         }
 
         return $this->agentModel;
+    }
+
+    /**
+     * Get AddressModel instance with correct database context
+     * Lazy initialization ensures database context is available
+     */
+    private function getAddressModel(): AddressModel
+    {
+        if ($this->addressModel === null) {
+            $this->addressModel = new AddressModel();
+        }
+
+        // Ensure the model's database is set to the current customer database
+        $customerDb = $this->getCurrentDatabase();
+        if ($customerDb && $this->addressModel->db) {
+            $this->addressModel->db->setDatabase($customerDb);
+        }
+
+        return $this->addressModel;
     }
 
     /**
@@ -210,10 +231,30 @@ class AgentMaintenance extends BaseController
             ];
 
             if ($this->getAgentModel()->saveAgent($agentData)) {
-                // If new agent, we need to get the key that was generated
+                // If new agent, create a blank address and link it
                 if ($isNewAgent) {
-                    return redirect()->to('/safety/agent-maintenance')
-                        ->with('success', 'Agent created successfully.');
+                    // The AgentModel's saveAgent() generates the new AgentKey
+                    // We need to retrieve it by searching for the agent we just created
+                    $newAgent = $this->getAgentModel()->searchAgentByName($agentData['Name']);
+
+                    if ($newAgent && isset($newAgent['AgentKey'])) {
+                        $newAgentKey = $newAgent['AgentKey'];
+
+                        // Create a blank address for the new agent
+                        $newNameKey = $this->getAddressModel()->createBlankAddress('AG');
+
+                        if ($newNameKey > 0) {
+                            // Link the address to the agent
+                            $this->getAddressModel()->linkAgentAddress($newAgentKey, $newNameKey);
+                        }
+
+                        // Redirect to load the newly created agent
+                        return redirect()->to('/safety/agent-maintenance/load/' . $newAgentKey)
+                            ->with('success', 'Agent created successfully.');
+                    } else {
+                        return redirect()->to('/safety/agent-maintenance')
+                            ->with('success', 'Agent created successfully.');
+                    }
                 } else {
                     // Reload the agent to show updated data
                     return redirect()->to('/safety/agent-maintenance/load/' . $agentKey)
@@ -339,5 +380,104 @@ class AgentMaintenance extends BaseController
             'TaxID' => $this->request->getPost('tax_id'),
             'IDType' => $this->request->getPost('id_type')
         ];
+    }
+
+    /**
+     * Get agent's address (AJAX endpoint)
+     */
+    public function getAddress()
+    {
+        // Require authentication
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+
+        // Get database with guaranteed tenant context
+        $db = $this->getCustomerDb();
+
+        $agentKey = intval($this->request->getGet('agent_key') ?? 0);
+
+        if ($agentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid agent key']);
+        }
+
+        $address = $this->getAgentModel()->getAgentAddress($agentKey);
+
+        if ($address) {
+            return $this->response->setJSON(['success' => true, 'address' => $address]);
+        } else {
+            return $this->response->setJSON(['success' => false, 'message' => 'Address not found']);
+        }
+    }
+
+    /**
+     * Save agent's address (AJAX endpoint)
+     */
+    public function saveAddress()
+    {
+        // Require authentication
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+
+        // Get database with guaranteed tenant context
+        $db = $this->getCustomerDb();
+
+        $agentKey = intval($this->request->getPost('agent_key') ?? 0);
+        $nameKey = intval($this->request->getPost('name_key') ?? 0);
+
+        if ($agentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid agent key']);
+        }
+
+        try {
+            // Prepare address data
+            $addressData = [
+                'NameKey' => $nameKey,
+                'Name1' => $this->request->getPost('name1'),
+                'Name2' => $this->request->getPost('name2'),
+                'NameQual' => 'AG', // Agent qualifier
+                'Address1' => $this->request->getPost('address1'),
+                'Address2' => $this->request->getPost('address2'),
+                'City' => $this->request->getPost('city'),
+                'State' => strtoupper($this->request->getPost('state') ?? ''),
+                'Zip' => $this->request->getPost('zip'),
+                'Phone' => $this->request->getPost('phone')
+            ];
+
+            // Save the address
+            $savedNameKey = $this->getAddressModel()->saveAddress($addressData);
+
+            if ($savedNameKey > 0) {
+                // If this was a new address, link it to the agent
+                if ($nameKey == 0) {
+                    $linked = $this->getAddressModel()->linkAgentAddress($agentKey, $savedNameKey);
+                    if (!$linked) {
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => 'Address saved but failed to link to agent'
+                        ]);
+                    }
+                }
+
+                // Reload the address to return fresh data
+                $updatedAddress = $this->getAddressModel()->getAddress($savedNameKey);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Address saved successfully',
+                    'address' => $updatedAddress
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to save address'
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error saving address: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred'
+            ]);
+        }
     }
 }

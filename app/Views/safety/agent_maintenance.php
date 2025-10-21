@@ -256,16 +256,98 @@
             </div>
         </div>
 
-        <!-- Right Column (Empty for now - future: Address, Contacts) -->
+        <!-- Right Column - Address -->
         <div class="col-lg-6">
+            <!-- Address Section -->
             <div class="tls-form-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0 d-inline">
+                        <i class="bi-geo-alt me-2"></i>Address
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary float-end" id="edit-address-btn" onclick="editAddress()">
+                        <i class="bi-pencil"></i> Edit Address
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Address Display Mode -->
+                    <div id="address-display">
+                        <p class="text-muted"><em>Loading address...</em></p>
+                    </div>
+
+                    <!-- Address Edit Mode (initially hidden) -->
+                    <div id="address-edit" style="display: none;">
+                        <input type="hidden" id="address_name_key" value="0">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="address_name1" class="form-label">Name 1:</label>
+                                <input type="text" class="form-control" id="address_name1" maxlength="35">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="address_name2" class="form-label">Name 2:</label>
+                                <input type="text" class="form-control" id="address_name2" maxlength="35">
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <label for="address_address1" class="form-label">Address 1:</label>
+                                <input type="text" class="form-control" id="address_address1" maxlength="35">
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <label for="address_address2" class="form-label">Address 2:</label>
+                                <input type="text" class="form-control" id="address_address2" maxlength="35">
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="address_city" class="form-label">City:</label>
+                                <input type="text" class="form-control" id="address_city" maxlength="18">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="address_state" class="form-label">State:</label>
+                                <input type="text" class="form-control text-uppercase" id="address_state" maxlength="2">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="address_zip" class="form-label">ZIP:</label>
+                                <input type="text" class="form-control" id="address_zip" maxlength="9">
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="address_phone" class="form-label">Phone:</label>
+                                <input type="text" class="form-control" id="address_phone" maxlength="15">
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <button type="button" class="btn tls-btn-primary" onclick="saveAddress()">
+                                    <i class="bi-save"></i> Save Address
+                                </button>
+                                <button type="button" class="btn tls-btn-secondary" onclick="cancelAddressEdit()">
+                                    <i class="bi-x-circle"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Future: Contacts and Comments Cards -->
+            <div class="tls-form-card mt-3">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="bi-info-circle me-2"></i>Additional Information
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Address, Contacts, and Comments will be added in future updates.</p>
+                    <p class="text-muted">Contacts and Comments will be added in future updates.</p>
                 </div>
             </div>
         </div>
@@ -460,9 +542,203 @@
     }
 
     <?php if ($agent): ?>
+    // ========================================
+    // Address Management Functions
+    // ========================================
+
+    let currentAddress = null;
+
+    /**
+     * Load agent address via AJAX
+     */
+    function loadAgentAddress() {
+        // Get the hidden agent_key field from the agent form (not the search form)
+        const agentKeyField = document.querySelector('#agentForm input[name="agent_key"]');
+
+        if (!agentKeyField) {
+            console.error('Agent key field not found');
+            document.getElementById('address-display').innerHTML = '<p class="text-muted"><em>No agent loaded</em></p>';
+            return;
+        }
+
+        const agentKey = agentKeyField.value;
+        console.log('Loading address for agent:', agentKey);
+
+        if (!agentKey || agentKey == '0') {
+            document.getElementById('address-display').innerHTML = '<p class="text-muted"><em>No agent loaded</em></p>';
+            return;
+        }
+
+        const url = `<?= base_url('safety/agent-maintenance/get-address') ?>?agent_key=${agentKey}`;
+        console.log('Fetching address from:', url);
+
+        fetch(url)
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Address data:', data);
+                if (data.success && data.address) {
+                    currentAddress = data.address;
+                    displayAddress(data.address);
+                } else {
+                    document.getElementById('address-display').innerHTML = '<p class="text-muted"><em>No address found</em></p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading address:', error);
+                document.getElementById('address-display').innerHTML = '<p class="text-danger"><em>Error loading address</em></p>';
+            });
+    }
+
+    /**
+     * Display address in read-only format
+     */
+    function displayAddress(address) {
+        let html = '';
+
+        if (address.Name1) {
+            html += `<p class="mb-1"><strong>${escapeHtml(address.Name1)}</strong></p>`;
+        }
+        if (address.Name2) {
+            html += `<p class="mb-1">${escapeHtml(address.Name2)}</p>`;
+        }
+        if (address.Address1) {
+            html += `<p class="mb-1">${escapeHtml(address.Address1)}</p>`;
+        }
+        if (address.Address2) {
+            html += `<p class="mb-1">${escapeHtml(address.Address2)}</p>`;
+        }
+
+        if (address.City || address.State || address.Zip) {
+            html += '<p class="mb-1">';
+            if (address.City) html += escapeHtml(address.City);
+            if (address.State) html += `, ${escapeHtml(address.State)}`;
+            if (address.Zip) html += ` ${escapeHtml(address.Zip)}`;
+            html += '</p>';
+        }
+
+        if (address.Phone) {
+            html += `<p class="mb-1"><i class="bi-telephone me-2"></i>${escapeHtml(address.Phone)}</p>`;
+        }
+
+        if (!html) {
+            html = '<p class="text-muted"><em>No address information</em></p>';
+        }
+
+        document.getElementById('address-display').innerHTML = html;
+    }
+
+    /**
+     * Toggle address edit mode
+     */
+    function editAddress() {
+        if (!currentAddress) {
+            alert('Please load an agent first');
+            return;
+        }
+
+        // Populate edit form
+        document.getElementById('address_name_key').value = currentAddress.NameKey || '0';
+        document.getElementById('address_name1').value = currentAddress.Name1 || '';
+        document.getElementById('address_name2').value = currentAddress.Name2 || '';
+        document.getElementById('address_address1').value = currentAddress.Address1 || '';
+        document.getElementById('address_address2').value = currentAddress.Address2 || '';
+        document.getElementById('address_city').value = currentAddress.City || '';
+        document.getElementById('address_state').value = currentAddress.State || '';
+        document.getElementById('address_zip').value = currentAddress.Zip || '';
+        document.getElementById('address_phone').value = currentAddress.Phone || '';
+
+        // Toggle display/edit mode
+        document.getElementById('address-display').style.display = 'none';
+        document.getElementById('address-edit').style.display = 'block';
+        document.getElementById('edit-address-btn').style.display = 'none';
+    }
+
+    /**
+     * Cancel address edit and return to display mode
+     */
+    function cancelAddressEdit() {
+        document.getElementById('address-display').style.display = 'block';
+        document.getElementById('address-edit').style.display = 'none';
+        document.getElementById('edit-address-btn').style.display = 'inline-block';
+    }
+
+    /**
+     * Save address via AJAX
+     */
+    function saveAddress() {
+        // Get the hidden agent_key field from the agent form (not the search form)
+        const agentKey = document.querySelector('#agentForm input[name="agent_key"]').value;
+
+        if (!agentKey || agentKey == '0') {
+            alert('Invalid agent key');
+            return;
+        }
+
+        const formData = new FormData();
+
+        // Add CSRF token for CI4
+        const csrfToken = document.querySelector('input[name="<?= csrf_token() ?>"]');
+        if (csrfToken) {
+            formData.append('<?= csrf_token() ?>', csrfToken.value);
+        }
+
+        formData.append('agent_key', agentKey);
+        formData.append('name_key', document.getElementById('address_name_key').value);
+        formData.append('name1', document.getElementById('address_name1').value);
+        formData.append('name2', document.getElementById('address_name2').value);
+        formData.append('address1', document.getElementById('address_address1').value);
+        formData.append('address2', document.getElementById('address_address2').value);
+        formData.append('city', document.getElementById('address_city').value);
+        formData.append('state', document.getElementById('address_state').value);
+        formData.append('zip', document.getElementById('address_zip').value);
+        formData.append('phone', document.getElementById('address_phone').value);
+
+        fetch('<?= base_url('safety/agent-maintenance/save-address') ?>', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Save response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Save response data:', data);
+            console.log('Success flag:', data.success);
+            console.log('Message:', data.message);
+            console.log('Address:', data.address);
+
+            if (data.success) {
+                currentAddress = data.address;
+                displayAddress(data.address);
+                cancelAddressEdit();
+                alert(data.message || 'Address saved successfully');
+            } else {
+                console.error('Save failed:', data);
+                alert(data.message || 'Failed to save address');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving address:', error);
+            alert('Error saving address: ' + error.message);
+        });
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     // Apply initial formatting when page loads
     document.addEventListener('DOMContentLoaded', function() {
         applyInputMask();
+        loadAgentAddress(); // Load address when page loads
     });
     <?php endif; ?>
 </script>

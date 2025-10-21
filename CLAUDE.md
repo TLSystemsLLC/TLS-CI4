@@ -893,8 +893,86 @@ public function autocomplete();  // API endpoint for autocomplete
 **Test Database:**
 - **CWKI2:** Contains agents including "KNOW SOLUTIONS, LLC"
 
-### 📋 Phase 6: Additional Entity Maintenance - Next Steps
-**Step 2:** Add Address management to Agent Maintenance (single address per agent)
+### ✅ Phase 6 - Step 2: Agent Address Management (COMPLETE)
+**Goal:** Add address management to Agent Maintenance
+
+**Implementation:**
+- ✅ **AddressModel** (`app/Models/AddressModel.php`) - Address CRUD using stored procedures
+- ✅ **AgentModel Extended** - Added `getAgentAddress()` method
+- ✅ **AgentMaintenance Controller Extended** - Added getAddress() and saveAddress() AJAX endpoints
+- ✅ **Agent Maintenance View Extended** - Added address display/edit UI in right column
+- ✅ Routes extended in `app/Config/Routes.php` for address endpoints
+- ✅ **CRITICAL FIX:** BaseModel `callStoredProcedureWithReturn()` now uses `sqlsrv_next_result()` to properly iterate through result sets
+
+**Key Features:**
+```php
+// AddressModel - Standard stored procedure pattern
+public function getAddress(int $nameKey): ?array;  // spNameAddress_Get
+public function saveAddress(array $addressData): int;  // spNameAddress_Save (15 params), returns NameKey
+public function getAgentAddresses(int $agentKey): array;  // spAgentNameAddresses_Get
+public function linkAgentAddress(int $agentKey, int $nameKey): bool;  // spAgentNameAddresses_Save
+public function createBlankAddress(string $nameQual = 'AG'): int;  // Create empty address
+
+// AgentModel - Address integration
+public function getAgentAddress(int $agentKey): ?array;  // Get first address via junction table
+
+// AgentMaintenance Controller - AJAX endpoints
+public function getAddress();  // AJAX: Load address for agent
+public function saveAddress();  // AJAX: Save address and link to agent
+```
+
+**Database Structure:**
+- **tNameAddress** - Stores all addresses (NameKey as primary key)
+- **tAgents_tNameAddress** - Junction table linking agents to addresses (many-to-many)
+- **Stored Procedures:**
+  - `spNameAddress_Get` - Get address by NameKey
+  - `spNameAddress_Save` - Save/update address, returns standard return code (0 = success)
+  - `spAgentNameAddresses_Get` - Get NameKeys for an agent
+  - `spAgentNameAddresses_Save` - Link address to agent
+
+**UI Features:**
+- Display mode shows formatted address with "Edit Address" button
+- Edit mode with inline form (Name1, Name2, Address lines, City, State, ZIP, Phone)
+- AJAX save without page reload
+- Automatic address creation for new agents (blank address linked on save)
+- Change tracking with cancel confirmation
+
+**CRITICAL FIX - BaseModel.callStoredProcedureWithReturn():**
+The method now properly handles SQL Server's multi-result set behavior using native SQLSRV functions:
+```php
+// Uses sqlsrv_query() instead of CI4's query() method
+$stmt = sqlsrv_query($conn, $sql, $parameters);
+
+// Iterates through result sets using sqlsrv_next_result()
+do {
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $rows[] = $row;
+    }
+    if (!empty($rows)) {
+        $result = $rows[0]; // Keep last non-empty result
+    }
+} while (sqlsrv_next_result($stmt));
+```
+
+**Why This Fix Was Needed:**
+- CI4's Query object doesn't expose `nextResultSet()` functionality
+- SQL Server returns the `SELECT @ReturnValue` as a separate result set
+- Without `sqlsrv_next_result()`, `getRowArray()` returned NULL
+- This pattern mirrors tls-web's `executeStoredProcedureWithReturn()` using PDO
+
+**Completed Testing:**
+- ✅ Address loading via AJAX
+- ✅ Address saving with proper success/error messages
+- ✅ Return code properly captured (0 = success)
+- ✅ Blank address auto-creation for new agents
+- ✅ Junction table linking verified
+
+**Notable Pattern:**
+- **Lazy Model Initialization:** AddressModel initialized with guaranteed database context via `getAddressModel()` helper
+- **AJAX Pattern:** Display/edit modes without page reload
+- **Return Code Handling:** Uses BaseModel constants (SRV_NORMAL = 0) with human-readable messages
+
+### 📋 Phase 6 - Next Steps
 **Step 3:** Add Comments management to Agent Maintenance (unlimited comments)
 **Step 4:** Add Contacts management to Agent Maintenance (complex 3-level chain)
 

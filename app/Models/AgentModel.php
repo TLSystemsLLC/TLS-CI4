@@ -91,9 +91,16 @@ class AgentModel extends BaseModel
                 floatval($agentData['CompanyPct'] ?? 0)         // @CompanyPct DECIMAL
             ];
 
-            $this->callStoredProcedure('spAgent_Save', $params);
+            $returnCode = $this->callStoredProcedureWithReturn('spAgent_Save', $params);
 
-            return true;
+            log_message('info', "spAgent_Save returned: {$returnCode} ({$this->getReturnCodeMessage($returnCode)}) for AgentKey: {$agentKey}");
+
+            if ($returnCode === self::SRV_NORMAL) {
+                return true;
+            } else {
+                log_message('error', "spAgent_Save failed: {$this->getReturnCodeMessage($returnCode)}");
+                return false;
+            }
         } catch (\Exception $e) {
             log_message('error', 'Error saving agent: ' . $e->getMessage());
             return false;

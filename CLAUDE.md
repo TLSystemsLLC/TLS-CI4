@@ -972,11 +972,93 @@ do {
 - **AJAX Pattern:** Display/edit modes without page reload
 - **Return Code Handling:** Uses BaseModel constants (SRV_NORMAL = 0) with human-readable messages
 
-### 📋 Phase 6 - Next Steps
-**Step 3:** Add Comments management to Agent Maintenance (unlimited comments)
-**Step 4:** Add Contacts management to Agent Maintenance (complex 3-level chain)
+### ✅ Phase 6 - Step 3: Agent Contact Management (COMPLETE)
+**Goal:** Add contact management to Agent Maintenance using 3-level chain architecture
 
-**Future Entities:** Driver, Owner, Customer, Unit (follow Agent Maintenance pattern)
+**Implementation:**
+- ✅ **ContactModel** (`app/Models/ContactModel.php`) - Contact CRUD using stored procedures with column name mapping
+- ✅ **AgentModel Extended** - Added `getAgentContacts()` method with 3-level chain retrieval
+- ✅ **AgentMaintenance Controller Extended** - Added getContacts(), saveContact(), deleteContact() AJAX endpoints
+- ✅ **Agent Maintenance View Extended** - Added contacts table, Bootstrap modal, and JavaScript functions
+- ✅ Routes extended in `app/Config/Routes.php` for contact endpoints
+
+**Key Features:**
+```php
+// ContactModel - Standard stored procedure pattern with column mapping
+public function getContact(int $contactKey): ?array;  // spContact_Get with DB→UI column mapping
+public function getContactKeysForNameKey(int $nameKey): array;  // spContacts_Get
+public function saveContact(array $contactData, int $entityKey): int;  // spContact_Save, returns ContactKey
+public function deleteContact(int $contactKey): bool;  // spContact_Delete
+
+// AgentModel - 3-level chain retrieval
+public function getAgentContacts(int $agentKey): array;  // Agent → NameAddress → Contact chain
+
+// AgentMaintenance Controller - AJAX endpoints
+public function getContacts();  // AJAX: Load contacts for agent
+public function saveContact();  // AJAX: Save contact (create or update)
+public function deleteContact();  // AJAX: Delete contact
+```
+
+**Database Structure - 3-Level Chain:**
+- **Agent** → (via tAgents_tNameAddress) → **NameAddress** → (via tNameAddress_tContact) → **Contact**
+- **tContact** - Stores all contacts (ContactKey as primary key)
+- **tNameAddress_tContact** - Junction table linking addresses to contacts (many-to-many)
+- **Stored Procedures:**
+  - `spContact_Get` - Get contact by ContactKey
+  - `spContact_Save` - Save/update contact (9 parameters), returns standard return code (0 = success)
+  - `spContact_Delete` - Delete contact, returns standard return code
+  - `spContacts_Get` - Get ContactKeys for a NameKey
+
+**CRITICAL Column Name Mapping (DB → UI):**
+ContactModel.getContact() maps database column names to UI-friendly names:
+- **TelephoneNo** → **Phone**
+- **CellNo** → **Mobile**
+- **ContactFunction** → **Relationship**
+
+This mapping happens in the model layer to maintain clean separation.
+
+**UI Features:**
+- Contacts table displays: Name, Phone, Mobile, Relationship, Actions
+- "Add Contact" button opens Bootstrap modal
+- Modal fields: First Name, Last Name, Phone, Mobile, Email, Relationship, Primary Contact checkbox
+- Edit/Delete buttons for each contact
+- AJAX operations without page reload
+- Contact count badge updates automatically
+- Change tracking and unsaved changes warning
+
+**JavaScript Functions:**
+```javascript
+loadAgentContacts();     // Load contacts for current agent
+displayContacts(contacts);  // Render contacts table
+showContactModal();      // Open modal for new contact
+editContact(contactKey); // Load contact into modal for editing
+saveContact();           // Save contact via AJAX
+deleteContact(contactKey); // Delete contact with confirmation
+```
+
+**Completed Testing:**
+- ✅ Contact loading via AJAX (3-level chain retrieval)
+- ✅ Contact display with proper column mapping
+- ✅ Add new contact with modal form
+- ✅ Edit existing contact
+- ✅ Delete contact with confirmation
+- ✅ Primary contact checkbox handling
+- ✅ Return codes properly captured (0 = success)
+
+**Notable Pattern:**
+- **3-Level Chain Architecture:** Agent → tAgents_tNameAddress → tNameAddress → tNameAddress_tContact → tContact
+- **Lazy Model Initialization:** ContactModel initialized with guaranteed database context via `getContactModel()` helper
+- **Column Name Mapping:** Database columns mapped to UI-friendly names in model layer (not controller or view)
+- **AJAX Pattern:** Same pattern as address management for consistency
+- **Return Code Handling:** Uses `callStoredProcedureWithReturn()` for save/delete operations
+
+### 📋 Phase 6 - Phase Complete
+All Agent Maintenance features have been implemented:
+- ✅ Step 1: Core Agent CRUD
+- ✅ Step 2: Address Management
+- ✅ Step 3: Contact Management
+
+**Next Phase:** Apply this pattern to other entity maintenance screens (Driver, Owner, Customer, Unit)
 
 ## Testing
 

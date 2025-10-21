@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\AgentModel;
 use App\Models\AddressModel;
+use App\Models\ContactModel;
 
 /**
  * Agent Maintenance Controller
@@ -18,6 +19,7 @@ class AgentMaintenance extends BaseController
 {
     private ?AgentModel $agentModel = null;
     private ?AddressModel $addressModel = null;
+    private ?ContactModel $contactModel = null;
 
     /**
      * Get AgentModel instance with correct database context
@@ -474,6 +476,148 @@ class AgentMaintenance extends BaseController
             }
         } catch (\Exception $e) {
             log_message('error', 'Error saving address: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred'
+            ]);
+        }
+    }
+
+    /**
+     * Get ContactModel instance with correct database context
+     * Lazy initialization ensures database context is available
+     */
+    private function getContactModel(): ContactModel
+    {
+        if ($this->contactModel === null) {
+            $this->contactModel = new ContactModel();
+        }
+
+        // Ensure the model's database is set to the current customer database
+        $customerDb = $this->getCurrentDatabase();
+        if ($customerDb && $this->contactModel->db) {
+            $this->contactModel->db->setDatabase($customerDb);
+        }
+
+        return $this->contactModel;
+    }
+
+    /**
+     * Get contacts for an agent (AJAX endpoint)
+     * Uses 3-level chain: Agent → NameAddress → Contact
+     */
+    public function getContacts()
+    {
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+        $db = $this->getCustomerDb();
+
+        $agentKey = intval($this->request->getGet('agent_key') ?? 0);
+
+        if ($agentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid agent key']);
+        }
+
+        try {
+            $contacts = $this->getAgentModel()->getAgentContacts($agentKey);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'contacts' => $contacts
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading contacts: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => true,
+                'contacts' => []
+            ]);
+        }
+    }
+
+    /**
+     * Save contact (AJAX endpoint)
+     * Creates or updates a contact
+     */
+    public function saveContact()
+    {
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+        $db = $this->getCustomerDb();
+
+        $agentKey = intval($this->request->getPost('agent_key') ?? 0);
+        $contactKey = intval($this->request->getPost('contact_key') ?? 0);
+
+        if ($agentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid agent key']);
+        }
+
+        try {
+            $contactData = [
+                'ContactKey' => $contactKey,
+                'FirstName' => $this->request->getPost('first_name'),
+                'LastName' => $this->request->getPost('last_name'),
+                'Phone' => $this->request->getPost('phone'),
+                'Mobile' => $this->request->getPost('mobile'),
+                'Email' => $this->request->getPost('email'),
+                'Relationship' => $this->request->getPost('relationship'),
+                'IsPrimary' => $this->request->getPost('is_primary') ? 1 : 0
+            ];
+
+            $savedContactKey = $this->getContactModel()->saveContact($contactData, $agentKey);
+
+            if ($savedContactKey > 0) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Contact saved successfully',
+                    'contact_key' => $savedContactKey
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to save contact'
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error saving contact: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred'
+            ]);
+        }
+    }
+
+    /**
+     * Delete contact (AJAX endpoint)
+     * Removes a contact
+     */
+    public function deleteContact()
+    {
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+        $db = $this->getCustomerDb();
+
+        $contactKey = intval($this->request->getPost('contact_key') ?? 0);
+
+        if ($contactKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid contact key']);
+        }
+
+        try {
+            $deleted = $this->getContactModel()->deleteContact($contactKey);
+
+            if ($deleted) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Contact deleted successfully'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to delete contact'
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error deleting contact: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Database error occurred'

@@ -340,20 +340,99 @@
             </div>
 
             <!-- Future: Contacts and Comments Cards -->
+            <!-- Contacts Section -->
             <div class="tls-form-card mt-3">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi-info-circle me-2"></i>Additional Information
-                    </h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi-telephone me-2"></i>Contacts
+                        <span class="badge bg-secondary" id="contact-count">0</span>
+                    </span>
+                    <button type="button" class="btn btn-sm tls-btn-primary" onclick="showContactModal()">
+                        <i class="bi-plus-circle"></i> Add Contact
+                    </button>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Contacts and Comments will be added in future updates.</p>
+                    <div id="contacts-loading" class="text-center" style="display: none;">
+                        <i class="bi-hourglass-split"></i> Loading contacts...
+                    </div>
+                    <div id="contacts-grid">
+                        <p class="text-muted">No contacts on file</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </form>
 <?php endif; ?>
+
+<!-- Contact Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="contactModalLabel">Add/Edit Contact</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="contactForm">
+                    <input type="hidden" id="contact_key" name="contact_key" value="0">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="contact_first_name" class="form-label">First Name:</label>
+                            <input type="text" class="form-control" id="contact_first_name" name="first_name" maxlength="30">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="contact_last_name" class="form-label">Last Name:</label>
+                            <input type="text" class="form-control" id="contact_last_name" name="last_name" maxlength="30">
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label for="contact_phone" class="form-label">Phone:</label>
+                            <input type="text" class="form-control" id="contact_phone" name="phone" maxlength="20">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="contact_mobile" class="form-label">Mobile:</label>
+                            <input type="text" class="form-control" id="contact_mobile" name="mobile" maxlength="20">
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <label for="contact_email" class="form-label">Email:</label>
+                            <input type="email" class="form-control" id="contact_email" name="email" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-8">
+                            <label for="contact_relationship" class="form-label">Relationship:</label>
+                            <input type="text" class="form-control" id="contact_relationship" name="relationship" maxlength="30">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="contact_is_primary" name="is_primary">
+                                <label class="form-check-label" for="contact_is_primary">
+                                    Primary Contact
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn tls-btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn tls-btn-primary" onclick="saveContact()">
+                    <i class="bi-check-circle"></i> Save Contact
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?= $this->endSection() ?>
 
@@ -739,7 +818,228 @@
     document.addEventListener('DOMContentLoaded', function() {
         applyInputMask();
         loadAgentAddress(); // Load address when page loads
+        loadAgentContacts(); // Load contacts when page loads
     });
+
+    /**
+     * Load agent contacts using 3-level chain retrieval
+     */
+    function loadAgentContacts() {
+        const agentKeyField = document.querySelector('#agentForm input[name="agent_key"]');
+        if (!agentKeyField) {
+            console.error('Agent key field not found');
+            document.getElementById('contacts-grid').innerHTML = '<p class="text-muted">No agent loaded</p>';
+            return;
+        }
+
+        const agentKey = agentKeyField.value;
+        console.log('Loading contacts for agent:', agentKey);
+
+        if (!agentKey || agentKey == '0') {
+            document.getElementById('contacts-grid').innerHTML = '<p class="text-muted">No agent loaded</p>';
+            return;
+        }
+
+        document.getElementById('contacts-loading').style.display = 'block';
+        document.getElementById('contacts-grid').innerHTML = '';
+
+        const url = `<?= base_url('safety/agent-maintenance/get-contacts') ?>?agent_key=${agentKey}`;
+        console.log('Fetching contacts from:', url);
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Contacts data:', data);
+                document.getElementById('contacts-loading').style.display = 'none';
+
+                if (data.success && data.contacts && data.contacts.length > 0) {
+                    displayContacts(data.contacts);
+                    document.getElementById('contact-count').textContent = data.contacts.length;
+                } else {
+                    document.getElementById('contacts-grid').innerHTML = '<p class="text-muted">No contacts on file</p>';
+                    document.getElementById('contact-count').textContent = '0';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading contacts:', error);
+                document.getElementById('contacts-loading').style.display = 'none';
+                document.getElementById('contacts-grid').innerHTML = '<p class="text-danger">Error loading contacts</p>';
+            });
+    }
+
+    /**
+     * Display contacts in table format
+     */
+    function displayContacts(contacts) {
+        let html = '<div class="table-responsive">';
+        html += '<table class="table table-hover table-sm">';
+        html += '<thead><tr><th>Name</th><th>Phone</th><th>Mobile</th><th>Relationship</th><th>Actions</th></tr></thead>';
+        html += '<tbody>';
+
+        contacts.forEach(contact => {
+            html += '<tr>';
+            html += '<td>' + escapeHtml(contact.ContactName || '') + '</td>';
+            html += '<td>' + escapeHtml(contact.Phone || '') + '</td>';
+            html += '<td>' + escapeHtml(contact.Mobile || '') + '</td>';
+            html += '<td>' + escapeHtml(contact.Relationship || '') + '</td>';
+            html += '<td>';
+            html += '<button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editContact(' + contact.ContactKey + ')" title="Edit">';
+            html += '<i class="bi-pencil"></i>';
+            html += '</button>';
+            html += '<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteContact(' + contact.ContactKey + ')" title="Delete">';
+            html += '<i class="bi-trash"></i>';
+            html += '</button>';
+            html += '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        document.getElementById('contacts-grid').innerHTML = html;
+    }
+
+    /**
+     * Show contact modal for adding new contact
+     */
+    function showContactModal() {
+        // Reset form
+        document.getElementById('contactForm').reset();
+        document.getElementById('contact_key').value = '0';
+        document.getElementById('contactModalLabel').textContent = 'Add Contact';
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('contactModal')).show();
+    }
+
+    /**
+     * Edit existing contact
+     */
+    function editContact(contactKey) {
+        // Find the contact in the current data
+        const agentKey = document.querySelector('#agentForm input[name="agent_key"]').value;
+
+        fetch(`<?= base_url('safety/agent-maintenance/get-contacts') ?>?agent_key=${agentKey}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.contacts) {
+                    const contact = data.contacts.find(c => c.ContactKey == contactKey);
+                    if (contact) {
+                        // Populate form
+                        document.getElementById('contact_key').value = contact.ContactKey;
+                        document.getElementById('contact_first_name').value = contact.FirstName || '';
+                        document.getElementById('contact_last_name').value = contact.LastName || '';
+                        document.getElementById('contact_phone').value = contact.Phone || '';
+                        document.getElementById('contact_mobile').value = contact.Mobile || '';
+                        document.getElementById('contact_email').value = contact.Email || '';
+                        document.getElementById('contact_relationship').value = contact.Relationship || '';
+                        document.getElementById('contact_is_primary').checked = contact.IsPrimary == 1;
+
+                        document.getElementById('contactModalLabel').textContent = 'Edit Contact';
+
+                        // Show modal
+                        new bootstrap.Modal(document.getElementById('contactModal')).show();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading contact for edit:', error);
+                alert('Error loading contact details');
+            });
+    }
+
+    /**
+     * Save contact via AJAX
+     */
+    function saveContact() {
+        const agentKey = document.querySelector('#agentForm input[name="agent_key"]').value;
+
+        if (!agentKey || agentKey == '0') {
+            alert('Invalid agent key');
+            return;
+        }
+
+        const formData = new FormData();
+
+        // Add CSRF token
+        const csrfToken = document.querySelector('input[name="<?= csrf_token() ?>"]');
+        if (csrfToken) {
+            formData.append('<?= csrf_token() ?>', csrfToken.value);
+        }
+
+        formData.append('agent_key', agentKey);
+        formData.append('contact_key', document.getElementById('contact_key').value);
+        formData.append('first_name', document.getElementById('contact_first_name').value);
+        formData.append('last_name', document.getElementById('contact_last_name').value);
+        formData.append('phone', document.getElementById('contact_phone').value);
+        formData.append('mobile', document.getElementById('contact_mobile').value);
+        formData.append('email', document.getElementById('contact_email').value);
+        formData.append('relationship', document.getElementById('contact_relationship').value);
+
+        if (document.getElementById('contact_is_primary').checked) {
+            formData.append('is_primary', '1');
+        }
+
+        fetch('<?= base_url('safety/agent-maintenance/save-contact') ?>', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('contactModal')).hide();
+
+                // Reload contacts
+                loadAgentContacts();
+
+                alert(data.message || 'Contact saved successfully');
+            } else {
+                alert(data.message || 'Failed to save contact');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving contact:', error);
+            alert('Error saving contact: ' + error.message);
+        });
+    }
+
+    /**
+     * Delete contact with confirmation
+     */
+    function deleteContact(contactKey) {
+        if (!confirm('Are you sure you want to delete this contact?')) {
+            return;
+        }
+
+        const formData = new FormData();
+
+        // Add CSRF token
+        const csrfToken = document.querySelector('input[name="<?= csrf_token() ?>"]');
+        if (csrfToken) {
+            formData.append('<?= csrf_token() ?>', csrfToken.value);
+        }
+
+        formData.append('contact_key', contactKey);
+
+        fetch('<?= base_url('safety/agent-maintenance/delete-contact') ?>', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload contacts
+                loadAgentContacts();
+
+                alert(data.message || 'Contact deleted successfully');
+            } else {
+                alert(data.message || 'Failed to delete contact');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting contact:', error);
+            alert('Error deleting contact: ' + error.message);
+        });
+    }
     <?php endif; ?>
 </script>
 <?= $this->endSection() ?>

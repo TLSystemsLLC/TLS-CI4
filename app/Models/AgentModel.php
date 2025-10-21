@@ -248,4 +248,63 @@ class AgentModel extends BaseModel
         log_message('info', 'AgentModel::getAgentAddress - No address found for agent');
         return null;
     }
+
+    /**
+     * Get agent's contacts using 3-level chain retrieval
+     *
+     * Chain: Agent → tAgents_tNameAddress → tNameAddress → tNameAddress_tContact → tContact
+     *
+     * @param int $agentKey Agent key
+     * @return array Array of contact data with proper column mapping
+     */
+    public function getAgentContacts(int $agentKey): array
+    {
+        if ($agentKey <= 0) {
+            return [];
+        }
+
+        $contacts = [];
+
+        try {
+            // Step 1: Get NameKeys linked to this agent
+            $nameKeyResults = $this->callStoredProcedure('spAgentNameAddresses_Get', [$agentKey]);
+
+            log_message('info', 'AgentModel::getAgentContacts - AgentKey: ' . $agentKey);
+            log_message('info', 'AgentModel::getAgentContacts - spAgentNameAddresses_Get results: ' . json_encode($nameKeyResults));
+
+            if (!empty($nameKeyResults) && is_array($nameKeyResults)) {
+                $contactModel = new \App\Models\ContactModel();
+                // Ensure the model's database is set to the current customer database
+                $contactModel->db = $this->db;
+
+                // Step 2: For each NameKey, get ContactKeys
+                foreach ($nameKeyResults as $nameKeyRow) {
+                    $nameKey = $nameKeyRow['NameKey'] ?? 0;
+
+                    if ($nameKey > 0) {
+                        $contactKeys = $contactModel->getContactKeysForNameKey($nameKey);
+
+                        log_message('info', 'AgentModel::getAgentContacts - NameKey: ' . $nameKey . ', ContactKeys: ' . json_encode($contactKeys));
+
+                        // Step 3: For each ContactKey, get full contact details
+                        foreach ($contactKeys as $contactKey) {
+                            if ($contactKey > 0) {
+                                $contact = $contactModel->getContact($contactKey);
+
+                                if ($contact !== null) {
+                                    $contacts[] = $contact;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            log_message('info', 'AgentModel::getAgentContacts - Total contacts found: ' . count($contacts));
+        } catch (\Exception $e) {
+            log_message('error', 'AgentModel::getAgentContacts - Error: ' . $e->getMessage());
+        }
+
+        return $contacts;
+    }
 }

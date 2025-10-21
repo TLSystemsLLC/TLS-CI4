@@ -43,6 +43,7 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
     $routes->get('agent-maintenance/get-address', 'AgentMaintenance::getAddress');
     $routes->post('agent-maintenance/save-address', 'AgentMaintenance::saveAddress');
     $routes->get('agent-maintenance/get-contacts', 'AgentMaintenance::getContacts');
+    $routes->get('agent-maintenance/get-contact-function-options', 'AgentMaintenance::getContactFunctionOptions');
     $routes->post('agent-maintenance/save-contact', 'AgentMaintenance::saveContact');
     $routes->post('agent-maintenance/delete-contact', 'AgentMaintenance::deleteContact');
 });

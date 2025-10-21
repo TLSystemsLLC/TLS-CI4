@@ -64,6 +64,9 @@ class TLSAuth
                 $userDetails = $this->getUserDetails($userId);
                 $companyInfo = $this->getCompanyInfo();
 
+                // Load and cache validation table for entire session
+                $validationTable = $this->loadValidationTable();
+
                 // Create user session using CI4's session library
                 $sessionData = [
                     'user_id' => $userId,
@@ -71,6 +74,7 @@ class TLSAuth
                     'user_menus' => $menus,
                     'user_details' => $userDetails,
                     'company_info' => $companyInfo,
+                    'validation_table' => $validationTable,
                     'login_time' => time(),
                     'logged_in' => true
                 ];
@@ -78,7 +82,7 @@ class TLSAuth
                 $this->session->set($sessionData);
 
                 // Log successful login
-                log_message('info', "Successful login: User '{$userId}' to database '{$customer}'");
+                log_message('info', "Successful login: User '{$userId}' to database '{$customer}' - Cached " . count($validationTable) . " validation entries");
 
                 return [
                     'success' => true,
@@ -319,6 +323,27 @@ class TLSAuth
         if (!$this->isLoggedIn()) {
             redirect()->to($redirectUrl)->send();
             exit;
+        }
+    }
+
+    /**
+     * Load validation table from database
+     * Called once during login to cache for entire session
+     *
+     * @return array Complete validation table
+     */
+    private function loadValidationTable(): array
+    {
+        try {
+            // Execute spGetValidationTable
+            $sql = "EXEC spGetValidationTable";
+            $query = $this->db->query($sql);
+            $results = $query->getResultArray();
+
+            return $results ?? [];
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading validation table: ' . $e->getMessage());
+            return [];
         }
     }
 }

@@ -377,48 +377,21 @@
                 <form id="contactForm">
                     <input type="hidden" id="contact_key" name="contact_key" value="0">
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label for="contact_first_name" class="form-label">First Name:</label>
-                            <input type="text" class="form-control" id="contact_first_name" name="first_name" maxlength="30">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="contact_last_name" class="form-label">Last Name:</label>
-                            <input type="text" class="form-control" id="contact_last_name" name="last_name" maxlength="30">
-                        </div>
+                    <div class="mb-3">
+                        <label for="contact_name" class="form-label">Contact Name:</label>
+                        <input type="text" class="form-control" id="contact_name" name="contact_name" maxlength="35" required>
                     </div>
 
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <label for="contact_phone" class="form-label">Phone:</label>
-                            <input type="text" class="form-control" id="contact_phone" name="phone" maxlength="20">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="contact_mobile" class="form-label">Mobile:</label>
-                            <input type="text" class="form-control" id="contact_mobile" name="mobile" maxlength="20">
-                        </div>
+                    <div class="mb-3">
+                        <label for="contact_function" class="form-label">Function:</label>
+                        <select class="form-select" id="contact_function" name="contact_function">
+                            <option value="">-- Select Function --</option>
+                        </select>
                     </div>
 
-                    <div class="row mt-3">
-                        <div class="col-md-12">
-                            <label for="contact_email" class="form-label">Email:</label>
-                            <input type="email" class="form-control" id="contact_email" name="email" maxlength="50">
-                        </div>
-                    </div>
-
-                    <div class="row mt-3">
-                        <div class="col-md-8">
-                            <label for="contact_relationship" class="form-label">Relationship:</label>
-                            <input type="text" class="form-control" id="contact_relationship" name="relationship" maxlength="30">
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="contact_is_primary" name="is_primary">
-                                <label class="form-check-label" for="contact_is_primary">
-                                    Primary Contact
-                                </label>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="telephone_no" class="form-label">Telephone:</label>
+                        <input type="text" class="form-control" id="telephone_no" name="telephone_no" maxlength="20">
                     </div>
                 </form>
             </div>
@@ -491,6 +464,12 @@
                 // Submit the form normally
                 document.getElementById('agentForm').submit();
             }
+        });
+
+        // Load ContactFunction validation options first, then load contacts
+        loadContactFunctionOptions().then(() => {
+            // Now that options are loaded, we can load contacts and display descriptions
+            console.log('ContactFunction options loaded, ready to display contacts');
         });
     });
     <?php endif; ?>
@@ -873,15 +852,17 @@
     function displayContacts(contacts) {
         let html = '<div class="table-responsive">';
         html += '<table class="table table-hover table-sm">';
-        html += '<thead><tr><th>Name</th><th>Phone</th><th>Mobile</th><th>Relationship</th><th>Actions</th></tr></thead>';
+        html += '<thead><tr><th>Function</th><th>Name</th><th>Telephone</th><th>Actions</th></tr></thead>';
         html += '<tbody>';
 
         contacts.forEach(contact => {
+            // Look up ContactFunction description
+            const functionDesc = getContactFunctionDescription(contact.ContactFunction);
+
             html += '<tr>';
+            html += '<td>' + escapeHtml(functionDesc) + '</td>';
             html += '<td>' + escapeHtml(contact.ContactName || '') + '</td>';
-            html += '<td>' + escapeHtml(contact.Phone || '') + '</td>';
-            html += '<td>' + escapeHtml(contact.Mobile || '') + '</td>';
-            html += '<td>' + escapeHtml(contact.Relationship || '') + '</td>';
+            html += '<td>' + escapeHtml(contact.TelephoneNo || '') + '</td>';
             html += '<td>';
             html += '<button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editContact(' + contact.ContactKey + ')" title="Edit">';
             html += '<i class="bi-pencil"></i>';
@@ -925,13 +906,9 @@
                     if (contact) {
                         // Populate form
                         document.getElementById('contact_key').value = contact.ContactKey;
-                        document.getElementById('contact_first_name').value = contact.FirstName || '';
-                        document.getElementById('contact_last_name').value = contact.LastName || '';
-                        document.getElementById('contact_phone').value = contact.Phone || '';
-                        document.getElementById('contact_mobile').value = contact.Mobile || '';
-                        document.getElementById('contact_email').value = contact.Email || '';
-                        document.getElementById('contact_relationship').value = contact.Relationship || '';
-                        document.getElementById('contact_is_primary').checked = contact.IsPrimary == 1;
+                        document.getElementById('contact_name').value = contact.ContactName || '';
+                        document.getElementById('contact_function').value = contact.ContactFunction || '';
+                        document.getElementById('telephone_no').value = contact.TelephoneNo || '';
 
                         document.getElementById('contactModalLabel').textContent = 'Edit Contact';
 
@@ -967,16 +944,9 @@
 
         formData.append('agent_key', agentKey);
         formData.append('contact_key', document.getElementById('contact_key').value);
-        formData.append('first_name', document.getElementById('contact_first_name').value);
-        formData.append('last_name', document.getElementById('contact_last_name').value);
-        formData.append('phone', document.getElementById('contact_phone').value);
-        formData.append('mobile', document.getElementById('contact_mobile').value);
-        formData.append('email', document.getElementById('contact_email').value);
-        formData.append('relationship', document.getElementById('contact_relationship').value);
-
-        if (document.getElementById('contact_is_primary').checked) {
-            formData.append('is_primary', '1');
-        }
+        formData.append('contact_name', document.getElementById('contact_name').value);
+        formData.append('contact_function', document.getElementById('contact_function').value);
+        formData.append('telephone_no', document.getElementById('telephone_no').value);
 
         fetch('<?= base_url('safety/agent-maintenance/save-contact') ?>', {
             method: 'POST',
@@ -1039,6 +1009,62 @@
             console.error('Error deleting contact:', error);
             alert('Error deleting contact: ' + error.message);
         });
+    }
+
+    // Global storage for ContactFunction validation options
+    let contactFunctionOptions = [];
+    let contactFunctionOptionsLoaded = false;
+
+    /**
+     * Load ContactFunction validation options from server
+     * Populates the contact_function dropdown and stores for lookup
+     */
+    function loadContactFunctionOptions() {
+        return fetch('<?= base_url('safety/agent-maintenance/get-contact-function-options') ?>')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.options) {
+                    const select = document.getElementById('contact_function');
+
+                    // Store options globally for lookup
+                    contactFunctionOptions = data.options;
+                    contactFunctionOptionsLoaded = true;
+
+                    // Keep the default option
+                    select.innerHTML = '<option value="">-- Select Function --</option>';
+
+                    // Add all validation options
+                    data.options.forEach(option => {
+                        const opt = document.createElement('option');
+                        opt.value = option.Code;
+                        opt.textContent = option.Code + ' - ' + option.Description;
+                        select.appendChild(opt);
+                    });
+
+                    console.log('Loaded ' + data.options.length + ' ContactFunction options');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading ContactFunction options:', error);
+            });
+    }
+
+    /**
+     * Get ContactFunction description by code
+     * @param {string} code The ContactFunction code
+     * @returns {string} Description or code if not found
+     */
+    function getContactFunctionDescription(code) {
+        if (!code) return '';
+
+        // If options not loaded yet, return the code
+        if (!contactFunctionOptions || contactFunctionOptions.length === 0) {
+            console.warn('ContactFunction options not loaded yet, showing code instead');
+            return code;
+        }
+
+        const option = contactFunctionOptions.find(opt => opt.Code === code);
+        return option ? option.Description : code;
     }
     <?php endif; ?>
 </script>

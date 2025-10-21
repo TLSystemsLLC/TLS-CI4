@@ -158,14 +158,49 @@ class BaseModel extends Model
         // spGetNextKey uses OUTPUT parameter
         $sql = "DECLARE @NextKey INT; EXEC spGetNextKey @TableName = ?, @NextKey = @NextKey OUTPUT; SELECT @NextKey as NextKey";
 
-        $query = $this->db->query($sql, [$tableName]);
+        log_message('info', "getNextKey called for table: {$tableName}");
 
-        if ($query === false) {
+        // Use sqlsrv functions directly to handle OUTPUT parameter correctly
+        $conn = $this->db->connID;
+
+        try {
+            $stmt = sqlsrv_query($conn, $sql, [$tableName]);
+
+            if ($stmt === false) {
+                $errors = sqlsrv_errors();
+                log_message('error', "getNextKey - sqlsrv_query failed for table {$tableName}: " . json_encode($errors));
+                return 0;
+            }
+
+            // Move through result sets to reach our SELECT @NextKey statement
+            $result = null;
+            do {
+                $rows = [];
+                while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                    $rows[] = $row;
+                }
+
+                if (!empty($rows)) {
+                    $result = $rows[0];
+                }
+            } while (sqlsrv_next_result($stmt));
+
+            sqlsrv_free_stmt($stmt);
+
+            if ($result === null || !isset($result['NextKey'])) {
+                log_message('error', "getNextKey - No NextKey found for table: {$tableName}");
+                return 0;
+            }
+
+            $nextKey = (int)$result['NextKey'];
+            log_message('info', "getNextKey returned: {$nextKey} for table: {$tableName}");
+
+            return $nextKey;
+
+        } catch (\Exception $e) {
+            log_message('error', "getNextKey exception for {$tableName}: " . $e->getMessage());
             return 0;
         }
-
-        $result = $query->getRowArray();
-        return (int)($result['NextKey'] ?? 0);
     }
 
     /**
@@ -230,5 +265,38 @@ class BaseModel extends Model
             default:
                 return "Unknown return code: {$returnCode}";
         }
+    }
+
+    /**
+     * Get validation table entries for a specific column
+     * Uses validation table cached at login for performance
+     *
+     * @param string $columnName Column name to filter by (e.g., 'ContactFunction')
+     * @return array Array of validation entries with Code and Description
+     */
+    public function getValidationOptions(string $columnName): array
+    {
+        $session = \Config\Services::session();
+
+        // Get validation table from session (loaded at login)
+        $validationTable = $session->get('validation_table');
+
+        if ($validationTable === null) {
+            log_message('warning', 'Validation table not found in session - should have been loaded at login');
+            return [];
+        }
+
+        // Filter by column name
+        $filtered = [];
+        foreach ($validationTable as $row) {
+            if ($row['ColumnName'] === $columnName) {
+                $filtered[] = [
+                    'Code' => $row['Code'],
+                    'Description' => $row['Description']
+                ];
+            }
+        }
+
+        return $filtered;
     }
 }

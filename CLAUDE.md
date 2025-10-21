@@ -1152,6 +1152,8 @@ Comprehensive testing guide available in: `TESTING_AUTHENTICATION.md`
 3. ⚠️ Two-location workflow - easy to edit wrong location
 4. ⚠️ Database context - verify customer DB is set before queries
 5. ⚠️ Session data - ensure `customer_db` is always in session
+6. ⚠️ **SQL Server OUTPUT parameters** - MUST use `sqlsrv_next_result()` to iterate through result sets
+7. ⚠️ **Model database initialization** - Models must initialize `$this->db` in constructor with customer database context from session
 
 ## Contact/References
 

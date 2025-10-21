@@ -27,6 +27,24 @@ use App\Models\BaseModel;
  */
 class ContactModel extends BaseModel
 {
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Initialize database connection if not already set
+        if (!isset($this->db)) {
+            $this->db = \Config\Database::connect();
+        }
+
+        // Set customer database context from session
+        $session = \Config\Services::session();
+        $customerDb = $session->get('customer_db');
+        if ($customerDb) {
+            $this->db->setDatabase($customerDb);
+            log_message('info', "ContactModel initialized with database: {$customerDb}");
+        }
+    }
+
     /**
      * Get contact by ContactKey
      *
@@ -44,17 +62,12 @@ class ContactModel extends BaseModel
         if (!empty($results) && is_array($results)) {
             $contact = $results[0];
 
-            // CRITICAL: Map database column names to UI-friendly names
+            // Return actual database fields only
             return [
                 'ContactKey' => $contactKey,
-                'FirstName' => $contact['FirstName'] ?? '',
-                'LastName' => $contact['LastName'] ?? '',
-                'ContactName' => trim(($contact['FirstName'] ?? '') . ' ' . ($contact['LastName'] ?? '')),
-                'Phone' => $contact['TelephoneNo'] ?? '',
-                'Mobile' => $contact['CellNo'] ?? '',
-                'Email' => $contact['Email'] ?? '',
-                'Relationship' => $contact['ContactFunction'] ?? '',
-                'IsPrimary' => $contact['IsPrimary'] ?? 0
+                'ContactName' => $contact['ContactName'] ?? '',
+                'ContactFunction' => $contact['ContactFunction'] ?? '',
+                'TelephoneNo' => $contact['TelephoneNo'] ?? ''
             ];
         }
 
@@ -95,8 +108,9 @@ class ContactModel extends BaseModel
         try {
             // Get ContactKey or generate new one
             $contactKey = $contactData['ContactKey'] ?? 0;
+            $isNewContact = ($contactKey == 0);
 
-            if ($contactKey == 0) {
+            if ($isNewContact) {
                 // New contact - get next key
                 $contactKey = $this->getNextKey('tContact');
                 if ($contactKey <= 0) {
@@ -105,31 +119,26 @@ class ContactModel extends BaseModel
                 }
             }
 
-            // Prepare parameters for spContact_Save (9 parameters)
+            // Prepare parameters for spContact_Save (4 parameters only!)
+            // @Key INT, @ContactName VARCHAR(35), @ContactFunction CHAR(3), @TelephoneNo VARCHAR(20)
             $params = [
-                $contactKey,                                    // @ContactKey INT
-                $entityKey,                                     // @EntityKey INT (AgentKey, DriverKey, etc.)
-                $contactData['FirstName'] ?? '',                // @FirstName VARCHAR(30)
-                $contactData['LastName'] ?? '',                 // @LastName VARCHAR(30)
-                $contactData['Phone'] ?? '',                    // @TelephoneNo VARCHAR(20)
-                $contactData['Mobile'] ?? '',                   // @CellNo VARCHAR(20)
-                $contactData['Email'] ?? '',                    // @Email VARCHAR(50)
-                $contactData['Relationship'] ?? '',             // @ContactFunction VARCHAR(30)
-                isset($contactData['IsPrimary']) ? 1 : 0        // @IsPrimary BIT
+                $contactKey,                                    // @Key INT
+                $contactData['ContactName'] ?? '',              // @ContactName VARCHAR(35)
+                $contactData['ContactFunction'] ?? '',          // @ContactFunction CHAR(3)
+                $contactData['TelephoneNo'] ?? ''               // @TelephoneNo VARCHAR(20)
             ];
 
             // Call the stored procedure
-            $returnCode = $this->callStoredProcedureWithReturn('spContact_Save', $params);
+            $result = $this->callStoredProcedure('spContact_Save', $params);
 
-            log_message('info', "spContact_Save returned: {$returnCode} ({$this->getReturnCodeMessage($returnCode)}) for ContactKey: {$contactKey}");
+            log_message('info', "spContact_Save executed successfully for ContactKey: {$contactKey}");
 
-            // Check for success (srvNormal = 0)
-            if ($returnCode === self::SRV_NORMAL) {
-                return $contactKey;
-            } else {
-                log_message('error', "spContact_Save failed: {$this->getReturnCodeMessage($returnCode)}");
-                return 0;
+            // Link contact to entity's NameKey via junction table (ONLY for new contacts)
+            if ($isNewContact && $entityKey > 0) {
+                $this->linkContactToEntity($contactKey, $entityKey);
             }
+
+            return $contactKey;
         } catch (\Exception $e) {
             log_message('error', 'Error saving contact: ' . $e->getMessage());
             return 0;
@@ -156,6 +165,38 @@ class ContactModel extends BaseModel
             return ($returnCode === self::SRV_NORMAL);
         } catch (\Exception $e) {
             log_message('error', 'Error deleting contact: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Link contact to entity via NameKey junction table
+     * Uses spAgentNameAddresses_Get to find NameKey, then spContacts_Save to link
+     *
+     * @param int $contactKey Contact key
+     * @param int $entityKey Entity key (AgentKey, DriverKey, etc.)
+     * @return bool True on success
+     */
+    private function linkContactToEntity(int $contactKey, int $entityKey): bool
+    {
+        try {
+            // Get NameKey(s) for this entity
+            $results = $this->callStoredProcedure('spAgentNameAddresses_Get', [$entityKey]);
+
+            if (!empty($results) && is_array($results)) {
+                $nameKey = $results[0]['NameKey'] ?? 0;
+
+                if ($nameKey > 0) {
+                    // Link contact to address using spContacts_Save
+                    $this->callStoredProcedure('spContacts_Save', [$nameKey, $contactKey]);
+                    log_message('info', "Linked ContactKey {$contactKey} to NameKey {$nameKey}");
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            log_message('error', 'Error linking contact to entity: ' . $e->getMessage());
             return false;
         }
     }

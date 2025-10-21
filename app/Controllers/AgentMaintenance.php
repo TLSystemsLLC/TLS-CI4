@@ -535,6 +535,31 @@ class AgentMaintenance extends BaseController
     }
 
     /**
+     * Get validation options for ContactFunction (AJAX endpoint)
+     * Returns cached validation table entries
+     */
+    public function getContactFunctionOptions()
+    {
+        $this->requireAuth();
+        $db = $this->getCustomerDb();
+
+        try {
+            $options = $this->getAgentModel()->getValidationOptions('ContactFunction');
+
+            return $this->response->setJSON([
+                'success' => true,
+                'options' => $options
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading ContactFunction options: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'options' => []
+            ]);
+        }
+    }
+
+    /**
      * Save contact (AJAX endpoint)
      * Creates or updates a contact
      */
@@ -554,13 +579,9 @@ class AgentMaintenance extends BaseController
         try {
             $contactData = [
                 'ContactKey' => $contactKey,
-                'FirstName' => $this->request->getPost('first_name'),
-                'LastName' => $this->request->getPost('last_name'),
-                'Phone' => $this->request->getPost('phone'),
-                'Mobile' => $this->request->getPost('mobile'),
-                'Email' => $this->request->getPost('email'),
-                'Relationship' => $this->request->getPost('relationship'),
-                'IsPrimary' => $this->request->getPost('is_primary') ? 1 : 0
+                'ContactName' => $this->request->getPost('contact_name'),
+                'ContactFunction' => $this->request->getPost('contact_function'),
+                'TelephoneNo' => $this->request->getPost('telephone_no')
             ];
 
             $savedContactKey = $this->getContactModel()->saveContact($contactData, $agentKey);

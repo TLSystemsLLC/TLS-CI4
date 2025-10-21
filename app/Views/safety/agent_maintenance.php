@@ -362,6 +362,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Comments Section - Full Width -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="tls-form-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi-chat-dots me-2"></i>Comments
+                        <span class="badge bg-secondary" id="comment-count">0</span>
+                    </span>
+                    <button type="button" class="btn btn-sm tls-btn-primary" onclick="showCommentModal()">
+                        <i class="bi-plus-circle"></i> Add Comment
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="comments-loading" class="text-center" style="display: none;">
+                        <i class="bi-hourglass-split"></i> Loading comments...
+                    </div>
+                    <div id="comments-list">
+                        <p class="text-muted">No comments on file</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </form>
 <?php endif; ?>
 
@@ -401,6 +426,37 @@
                 </button>
                 <button type="button" class="btn tls-btn-primary" onclick="saveContact()">
                     <i class="bi-check-circle"></i> Save Contact
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comment Modal -->
+<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="commentModalLabel">Add Comment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="commentForm">
+                    <input type="hidden" id="comment_key" name="comment_key" value="0">
+
+                    <div class="mb-3">
+                        <label for="comment_text" class="form-label">Comment:</label>
+                        <textarea class="form-control" id="comment_text" name="comment_text" rows="6" maxlength="255" required></textarea>
+                        <div class="form-text">Maximum 255 characters</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn tls-btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn tls-btn-primary" onclick="saveComment()">
+                    <i class="bi-check-circle"></i> Save Comment
                 </button>
             </div>
         </div>
@@ -798,6 +854,7 @@
         applyInputMask();
         loadAgentAddress(); // Load address when page loads
         loadAgentContacts(); // Load contacts when page loads
+        loadAgentComments(); // Load comments when page loads
     });
 
     /**
@@ -1065,6 +1122,211 @@
 
         const option = contactFunctionOptions.find(opt => opt.Code === code);
         return option ? option.Description : code;
+    }
+
+    // ========================================
+    // Comment Management Functions
+    // ========================================
+
+    // Load Agent Comments
+    function loadAgentComments() {
+        // Get the hidden agent_key field from the agent form
+        const agentKeyField = document.querySelector('#agentForm input[name="agent_key"]');
+
+        if (!agentKeyField) {
+            console.warn('Agent key field not found');
+            document.getElementById('comments-list').innerHTML = '<p class="text-muted">No agent loaded</p>';
+            return;
+        }
+
+        const agentKey = agentKeyField.value;
+        console.log('loadAgentComments called, agentKey:', agentKey);
+
+        if (!agentKey || agentKey == '0') {
+            document.getElementById('comments-list').innerHTML = '<p class="text-muted">No agent loaded</p>';
+            return;
+        }
+
+        document.getElementById('comments-loading').style.display = 'block';
+
+        fetch('<?= base_url('safety/agent-maintenance/get-comments') ?>?agent_key=' + agentKey)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('comments-loading').style.display = 'none';
+
+                if (data.success && data.comments) {
+                    displayComments(data.comments);
+                } else {
+                    document.getElementById('comments-list').innerHTML = '<p class="text-muted">No comments on file</p>';
+                    document.getElementById('comment-count').textContent = '0';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading comments:', error);
+                document.getElementById('comments-loading').style.display = 'none';
+                document.getElementById('comments-list').innerHTML = '<p class="text-danger">Error loading comments</p>';
+            });
+    }
+
+    // Display Comments
+    function displayComments(comments) {
+        let html = '';
+
+        if (!comments || comments.length === 0) {
+            html = '<p class="text-muted">No comments on file</p>';
+            document.getElementById('comment-count').textContent = '0';
+        } else {
+            document.getElementById('comment-count').textContent = comments.length;
+
+            comments.forEach(comment => {
+                const commentDate = comment.CommentDate ? new Date(comment.CommentDate).toLocaleString() : '';
+                const editedDate = comment.EditedDate ? new Date(comment.EditedDate).toLocaleString() : '';
+
+                html += '<div class="card mb-2">';
+                html += '<div class="card-body">';
+                html += '<p class="card-text">' + escapeHtml(comment.Comment || '') + '</p>';
+                html += '<div class="d-flex justify-content-between align-items-center">';
+                html += '<small class="text-muted">';
+                html += 'By: ' + escapeHtml(comment.CommentBy || '') + ' on ' + commentDate;
+                if (comment.EditedBy && comment.EditedBy !== comment.CommentBy) {
+                    html += '<br>Edited by: ' + escapeHtml(comment.EditedBy) + ' on ' + editedDate;
+                }
+                html += '</small>';
+                html += '<div class="btn-group" role="group">';
+                html += '<button type="button" class="btn btn-sm btn-warning" onclick="editComment(' + comment.CommentKey + ')"><i class="bi-pencil"></i></button>';
+                html += '<button type="button" class="btn btn-sm btn-danger" onclick="deleteComment(' + comment.CommentKey + ')"><i class="bi-trash"></i></button>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+        }
+
+        document.getElementById('comments-list').innerHTML = html;
+    }
+
+    // Show Comment Modal
+    function showCommentModal() {
+        const agentKeyField = document.querySelector('#agentForm input[name="agent_key"]');
+        const agentKey = agentKeyField ? agentKeyField.value : '0';
+
+        if (!agentKey || agentKey == '0') {
+            alert('Please load an agent first');
+            return;
+        }
+
+        // Reset form
+        document.getElementById('comment_key').value = '0';
+        document.getElementById('comment_text').value = '';
+        document.getElementById('commentModalLabel').textContent = 'Add Comment';
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('commentModal'));
+        modal.show();
+    }
+
+    // Save Comment
+    function saveComment() {
+        const agentKeyField = document.querySelector('#agentForm input[name="agent_key"]');
+        const agentKey = agentKeyField ? agentKeyField.value : '0';
+
+        if (!agentKey || agentKey == '0') {
+            alert('Please load an agent first');
+            return;
+        }
+
+        const commentText = document.getElementById('comment_text').value.trim();
+
+        if (!commentText) {
+            alert('Please enter a comment');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('agent_key', agentKey);
+        formData.append('comment_key', document.getElementById('comment_key').value);
+        formData.append('comment', commentText);
+
+        fetch('<?= base_url('safety/agent-maintenance/save-comment') ?>', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+                    modal.hide();
+
+                    // Reload comments
+                    loadAgentComments();
+
+                    alert('Comment saved successfully');
+                } else {
+                    alert('Failed to save comment: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving comment:', error);
+                alert('Error saving comment');
+            });
+    }
+
+    // Edit Comment
+    function editComment(commentKey) {
+        console.log('Edit comment:', commentKey);
+
+        const agentKeyField = document.querySelector('#agentForm input[name="agent_key"]');
+        const agentKey = agentKeyField ? agentKeyField.value : '0';
+
+        fetch('<?= base_url('safety/agent-maintenance/get-comments') ?>?agent_key=' + agentKey)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.comments) {
+                    const comment = data.comments.find(c => c.CommentKey === commentKey);
+
+                    if (comment) {
+                        document.getElementById('comment_key').value = comment.CommentKey;
+                        document.getElementById('comment_text').value = comment.Comment;
+                        document.getElementById('commentModalLabel').textContent = 'Edit Comment';
+
+                        const modal = new bootstrap.Modal(document.getElementById('commentModal'));
+                        modal.show();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading comment:', error);
+                alert('Error loading comment');
+            });
+    }
+
+    // Delete Comment
+    function deleteComment(commentKey) {
+        if (!confirm('Are you sure you want to delete this comment?')) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('comment_key', commentKey);
+
+        fetch('<?= base_url('safety/agent-maintenance/delete-comment') ?>', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAgentComments();
+                    alert('Comment deleted successfully');
+                } else {
+                    alert('Failed to delete comment: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting comment:', error);
+                alert('Error deleting comment');
+            });
     }
     <?php endif; ?>
 </script>

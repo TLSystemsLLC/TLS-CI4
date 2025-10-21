@@ -46,6 +46,9 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
     $routes->get('agent-maintenance/get-contact-function-options', 'AgentMaintenance::getContactFunctionOptions');
     $routes->post('agent-maintenance/save-contact', 'AgentMaintenance::saveContact');
     $routes->post('agent-maintenance/delete-contact', 'AgentMaintenance::deleteContact');
+    $routes->get('agent-maintenance/get-comments', 'AgentMaintenance::getComments');
+    $routes->post('agent-maintenance/save-comment', 'AgentMaintenance::saveComment');
+    $routes->post('agent-maintenance/delete-comment', 'AgentMaintenance::deleteComment');
 });
 
 // Keep test route for development

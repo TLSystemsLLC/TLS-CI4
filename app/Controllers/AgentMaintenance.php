@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\AgentModel;
 use App\Models\AddressModel;
 use App\Models\ContactModel;
+use App\Models\CommentModel;
 
 /**
  * Agent Maintenance Controller
@@ -20,6 +21,7 @@ class AgentMaintenance extends BaseController
     private ?AgentModel $agentModel = null;
     private ?AddressModel $addressModel = null;
     private ?ContactModel $contactModel = null;
+    private ?CommentModel $commentModel = null;
 
     /**
      * Get AgentModel instance with correct database context
@@ -639,6 +641,139 @@ class AgentMaintenance extends BaseController
             }
         } catch (\Exception $e) {
             log_message('error', 'Error deleting contact: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred'
+            ]);
+        }
+    }
+
+    /**
+     * Get CommentModel instance with correct database context
+     * Lazy initialization ensures database context is available
+     */
+    private function getCommentModel(): CommentModel
+    {
+        if ($this->commentModel === null) {
+            $this->commentModel = new CommentModel();
+        }
+        return $this->commentModel;
+    }
+
+    /**
+     * Get comments for agent (AJAX endpoint)
+     * Returns array of comments with details
+     */
+    public function getComments()
+    {
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+        $db = $this->getCustomerDb();
+
+        $agentKey = intval($this->request->getGet('agent_key') ?? 0);
+
+        if ($agentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'comments' => []]);
+        }
+
+        try {
+            $comments = $this->getAgentModel()->getAgentComments($agentKey);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'comments' => $comments
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading comments: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'comments' => []
+            ]);
+        }
+    }
+
+    /**
+     * Save comment (AJAX endpoint)
+     * Creates or updates a comment for an agent
+     */
+    public function saveComment()
+    {
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+        $db = $this->getCustomerDb();
+
+        $agentKey = intval($this->request->getPost('agent_key') ?? 0);
+        $commentKey = intval($this->request->getPost('comment_key') ?? 0);
+
+        if ($agentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid agent key']);
+        }
+
+        try {
+            // Get current user ID from session
+            $user = $this->getCurrentUser();
+            $userId = $user['user_id'] ?? 'UNKNOWN';
+
+            $commentData = [
+                'CommentKey' => $commentKey,
+                'Comment' => $this->request->getPost('comment')
+            ];
+
+            $savedCommentKey = $this->getCommentModel()->saveComment($commentData, $agentKey, $userId);
+
+            if ($savedCommentKey > 0) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Comment saved successfully',
+                    'comment_key' => $savedCommentKey
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to save comment'
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error saving comment: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred'
+            ]);
+        }
+    }
+
+    /**
+     * Delete comment (AJAX endpoint)
+     * Removes a comment
+     */
+    public function deleteComment()
+    {
+        $this->requireAuth();
+        $this->requireMenuPermission('mnuAgentMaint');
+        $db = $this->getCustomerDb();
+
+        $commentKey = intval($this->request->getPost('comment_key') ?? 0);
+
+        if ($commentKey <= 0) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid comment key']);
+        }
+
+        try {
+            $deleted = $this->getCommentModel()->deleteComment($commentKey);
+
+            if ($deleted) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Comment deleted successfully'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to delete comment'
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error deleting comment: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Database error occurred'

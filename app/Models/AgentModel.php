@@ -307,4 +307,46 @@ class AgentModel extends BaseModel
 
         return $contacts;
     }
+
+    /**
+     * Get all comments for an agent
+     * Returns array of full comment data with user and date information
+     *
+     * @param int $agentKey Agent key
+     * @return array Array of comments
+     */
+    public function getAgentComments(int $agentKey): array
+    {
+        $comments = [];
+
+        try {
+            log_message('info', 'AgentModel::getAgentComments - AgentKey: ' . $agentKey);
+
+            if ($agentKey > 0) {
+                $commentModel = new \App\Models\CommentModel();
+
+                // Step 1: Get CommentKeys for this agent
+                $commentKeys = $commentModel->getCommentKeysForAgent($agentKey);
+
+                log_message('info', 'AgentModel::getAgentComments - CommentKeys: ' . json_encode($commentKeys));
+
+                // Step 2: For each CommentKey, get full comment details
+                foreach ($commentKeys as $commentKey) {
+                    if ($commentKey > 0) {
+                        $comment = $commentModel->getComment($commentKey);
+
+                        if ($comment !== null) {
+                            $comments[] = $comment;
+                        }
+                    }
+                }
+            }
+
+            log_message('info', 'AgentModel::getAgentComments - Total comments found: ' . count($comments));
+        } catch (\Exception $e) {
+            log_message('error', 'AgentModel::getAgentComments - Error: ' . $e->getMessage());
+        }
+
+        return $comments;
+    }
 }

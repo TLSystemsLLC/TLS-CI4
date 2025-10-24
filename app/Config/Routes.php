@@ -73,16 +73,17 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
     $routes->post('agent-maintenance/save-comment', 'AgentMaintenance::saveComment');
     $routes->post('agent-maintenance/delete-comment', 'AgentMaintenance::deleteComment');
 
-    // Driver Maintenance
+    // Driver Maintenance (uses base template)
     $routes->get('driver-maintenance', 'DriverMaintenance::index');
     $routes->post('driver-maintenance/search', 'DriverMaintenance::search');
-    $routes->post('driver-maintenance/create-new', 'DriverMaintenance::createNewDriver');
+    $routes->post('driver-maintenance/create-new', 'DriverMaintenance::createNew');
     $routes->post('driver-maintenance/save', 'DriverMaintenance::save');
     $routes->get('driver-maintenance/load/(:num)', 'DriverMaintenance::load/$1');
     $routes->get('driver-maintenance/autocomplete', 'DriverMaintenance::autocomplete');
     $routes->get('driver-maintenance/get-address', 'DriverMaintenance::getAddress');
     $routes->post('driver-maintenance/save-address', 'DriverMaintenance::saveAddress');
     $routes->get('driver-maintenance/get-contacts', 'DriverMaintenance::getContacts');
+    $routes->get('driver-maintenance/get-contact-function-options', 'DriverMaintenance::getContactFunctionOptions');
     $routes->post('driver-maintenance/save-contact', 'DriverMaintenance::saveContact');
     $routes->post('driver-maintenance/delete-contact', 'DriverMaintenance::deleteContact');
     $routes->get('driver-maintenance/get-comments', 'DriverMaintenance::getComments');

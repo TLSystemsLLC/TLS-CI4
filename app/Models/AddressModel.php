@@ -15,6 +15,10 @@ use App\Models\BaseModel;
  * - spNameAddress_Save: Save/update address (15 parameters)
  * - spAgentNameAddresses_Get: Get all NameKeys for an agent
  * - spAgentNameAddresses_Save: Link address to agent
+ * - spDriverNameAddresses_Get: Get all NameKeys for a driver
+ * - spDriverNameAddresses_Save: Link address to driver
+ * - spOwnerNameAddresses_Get: Get all NameKeys for an owner
+ * - spOwnerNameAddresses_Save: Link address to owner
  *
  * @author Tony Lyle
  * @version 1.0 - CI4 Migration
@@ -152,9 +156,105 @@ class AddressModel extends BaseModel
     }
 
     /**
+     * Get all addresses for a driver
+     *
+     * @param int $driverKey Driver key
+     * @return array Array of NameKeys linked to this driver
+     */
+    public function getDriverAddresses(int $driverKey): array
+    {
+        if ($driverKey <= 0) {
+            return [];
+        }
+
+        $results = $this->callStoredProcedure('spDriverNameAddresses_Get', [$driverKey]);
+
+        if (!empty($results) && is_array($results)) {
+            // Extract NameKey values from result set
+            return array_column($results, 'NameKey');
+        }
+
+        return [];
+    }
+
+    /**
+     * Link address to driver via junction table
+     *
+     * @param int $driverKey Driver key
+     * @param int $nameKey Address key
+     * @return bool True on success, false on failure
+     */
+    public function linkDriverAddress(int $driverKey, int $nameKey): bool
+    {
+        try {
+            if ($driverKey <= 0 || $nameKey <= 0) {
+                return false;
+            }
+
+            $returnCode = $this->callStoredProcedureWithReturn(
+                'spDriverNameAddresses_Save',
+                [$driverKey, $nameKey]
+            );
+
+            return ($returnCode === 0);
+        } catch (\Exception $e) {
+            log_message('error', 'Error linking address to driver: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get all addresses for an owner
+     *
+     * @param int $ownerKey Owner key
+     * @return array Array of NameKeys linked to this owner
+     */
+    public function getOwnerAddresses(int $ownerKey): array
+    {
+        if ($ownerKey <= 0) {
+            return [];
+        }
+
+        $results = $this->callStoredProcedure('spOwnerNameAddresses_Get', [$ownerKey]);
+
+        if (!empty($results) && is_array($results)) {
+            // Extract NameKey values from result set
+            return array_column($results, 'NameKey');
+        }
+
+        return [];
+    }
+
+    /**
+     * Link address to owner via junction table
+     *
+     * @param int $ownerKey Owner key
+     * @param int $nameKey Address key
+     * @return bool True on success, false on failure
+     */
+    public function linkOwnerAddress(int $ownerKey, int $nameKey): bool
+    {
+        try {
+            if ($ownerKey <= 0 || $nameKey <= 0) {
+                return false;
+            }
+
+            $returnCode = $this->callStoredProcedureWithReturn(
+                'spOwnerNameAddresses_Save',
+                [$ownerKey, $nameKey]
+            );
+
+            return ($returnCode === 0);
+        } catch (\Exception $e) {
+            log_message('error', 'Error linking address to owner: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Create blank address for new entity
      *
-     * @param string $nameQual Name qualifier (AG for Agent, DR for Driver, etc.)
+     * @param string $nameQual Name qualifier (AG for Agent, DR for Driver, OW for Owner, etc.)
      * @return int NameKey of created address, or 0 on failure
      */
     public function createBlankAddress(string $nameQual = 'AG'): int

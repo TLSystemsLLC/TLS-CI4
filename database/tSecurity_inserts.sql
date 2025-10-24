@@ -830,4 +830,4 @@ PRINT '  - Safety: 8 items';
 PRINT '  - Systems: 6 items';
 PRINT '  - Payroll: 17 items';
 PRINT '';
-PRINT 'Verify results with: SELECT Parent, Menu, Description FROM tSecurity ORDER BY Parent, Menu;';
+PRINT 'Verify results with: SELECT Parent, Menu, Description FROM tSecurity ORDER BY Parent, Menu;';

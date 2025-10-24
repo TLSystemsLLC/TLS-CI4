@@ -72,6 +72,38 @@ $routes->group('safety', ['filter' => 'auth'], function($routes) {
     $routes->get('agent-maintenance/get-comments', 'AgentMaintenance::getComments');
     $routes->post('agent-maintenance/save-comment', 'AgentMaintenance::saveComment');
     $routes->post('agent-maintenance/delete-comment', 'AgentMaintenance::deleteComment');
+
+    // Driver Maintenance
+    $routes->get('driver-maintenance', 'DriverMaintenance::index');
+    $routes->post('driver-maintenance/search', 'DriverMaintenance::search');
+    $routes->post('driver-maintenance/create-new', 'DriverMaintenance::createNewDriver');
+    $routes->post('driver-maintenance/save', 'DriverMaintenance::save');
+    $routes->get('driver-maintenance/load/(:num)', 'DriverMaintenance::load/$1');
+    $routes->get('driver-maintenance/autocomplete', 'DriverMaintenance::autocomplete');
+    $routes->get('driver-maintenance/get-address', 'DriverMaintenance::getAddress');
+    $routes->post('driver-maintenance/save-address', 'DriverMaintenance::saveAddress');
+    $routes->get('driver-maintenance/get-contacts', 'DriverMaintenance::getContacts');
+    $routes->post('driver-maintenance/save-contact', 'DriverMaintenance::saveContact');
+    $routes->post('driver-maintenance/delete-contact', 'DriverMaintenance::deleteContact');
+    $routes->get('driver-maintenance/get-comments', 'DriverMaintenance::getComments');
+    $routes->post('driver-maintenance/save-comment', 'DriverMaintenance::saveComment');
+    $routes->post('driver-maintenance/delete-comment', 'DriverMaintenance::deleteComment');
+
+    // Owner Maintenance
+    $routes->get('owner-maintenance', 'OwnerMaintenance::index');
+    $routes->post('owner-maintenance/search', 'OwnerMaintenance::search');
+    $routes->post('owner-maintenance/create-new', 'OwnerMaintenance::createNewOwner');
+    $routes->post('owner-maintenance/save', 'OwnerMaintenance::save');
+    $routes->get('owner-maintenance/load/(:num)', 'OwnerMaintenance::load/$1');
+    $routes->get('owner-maintenance/autocomplete', 'OwnerMaintenance::autocomplete');
+    $routes->get('owner-maintenance/get-address', 'OwnerMaintenance::getAddress');
+    $routes->post('owner-maintenance/save-address', 'OwnerMaintenance::saveAddress');
+    $routes->get('owner-maintenance/get-contacts', 'OwnerMaintenance::getContacts');
+    $routes->post('owner-maintenance/save-contact', 'OwnerMaintenance::saveContact');
+    $routes->post('owner-maintenance/delete-contact', 'OwnerMaintenance::deleteContact');
+    $routes->get('owner-maintenance/get-comments', 'OwnerMaintenance::getComments');
+    $routes->post('owner-maintenance/save-comment', 'OwnerMaintenance::saveComment');
+    $routes->post('owner-maintenance/delete-comment', 'OwnerMaintenance::deleteComment');
 });
 
 // Keep test route for development

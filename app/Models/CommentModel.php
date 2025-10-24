@@ -10,6 +10,8 @@ use App\Models\BaseModel;
  * Handles comment data operations using stored procedures.
  * Comments are linked to entities via junction tables:
  *   Agent → tAgents_tComment → tComment
+ *   Driver → tDriver_tComment → tComment
+ *   Owner → tOwner_tComment → tComment
  *
  * Key Stored Procedures:
  * - spComment_Get: Get comment by CommentKey
@@ -17,6 +19,10 @@ use App\Models\BaseModel;
  * - spComment_Delete: Delete comment
  * - spAgentComments_Get: Get CommentKeys for an AgentKey
  * - spAgentComments_Save: Link comment to agent
+ * - spDriverComments_Get: Get CommentKeys for a DriverKey
+ * - spDriverComments_Save: Link comment to driver
+ * - spOwnerComments_Get: Get CommentKeys for an OwnerKey
+ * - spOwnerComments_Save: Link comment to owner
  *
  * @author Tony Lyle
  * @version 1.0 - CI4 Migration
@@ -101,14 +107,73 @@ class CommentModel extends BaseModel
     }
 
     /**
+     * Get all CommentKeys for a given DriverKey
+     *
+     * @param int $driverKey DriverKey from tDriver
+     * @return array Array of CommentKey values
+     */
+    public function getCommentKeysForDriver(int $driverKey): array
+    {
+        if ($driverKey <= 0) {
+            return [];
+        }
+
+        log_message('info', "CommentModel::getCommentKeysForDriver called for DriverKey: {$driverKey}");
+
+        $results = $this->callStoredProcedure('spDriverComments_Get', [$driverKey]);
+
+        log_message('info', "CommentModel::getCommentKeysForDriver - Results: " . json_encode($results));
+
+        if (!empty($results) && is_array($results)) {
+            // Extract CommentKey values from result set
+            $commentKeys = array_column($results, 'CommentKey');
+            log_message('info', "CommentModel::getCommentKeysForDriver - CommentKeys extracted: " . json_encode($commentKeys));
+            return $commentKeys;
+        }
+
+        log_message('info', "CommentModel::getCommentKeysForDriver - No results found");
+        return [];
+    }
+
+    /**
+     * Get all CommentKeys for a given OwnerKey
+     *
+     * @param int $ownerKey OwnerKey from tOwner
+     * @return array Array of CommentKey values
+     */
+    public function getCommentKeysForOwner(int $ownerKey): array
+    {
+        if ($ownerKey <= 0) {
+            return [];
+        }
+
+        log_message('info', "CommentModel::getCommentKeysForOwner called for OwnerKey: {$ownerKey}");
+
+        $results = $this->callStoredProcedure('spOwnerComments_Get', [$ownerKey]);
+
+        log_message('info', "CommentModel::getCommentKeysForOwner - Results: " . json_encode($results));
+
+        if (!empty($results) && is_array($results)) {
+            // Extract CommentKey values from result set
+            $commentKeys = array_column($results, 'CommentKey');
+            log_message('info', "CommentModel::getCommentKeysForOwner - CommentKeys extracted: " . json_encode($commentKeys));
+            return $commentKeys;
+        }
+
+        log_message('info', "CommentModel::getCommentKeysForOwner - No results found");
+        return [];
+    }
+
+    /**
      * Save comment (create or update)
      *
      * @param array $commentData Comment data array
-     * @param int $entityKey Entity key (AgentKey, DriverKey, etc.)
+     * @param int $entityKey Entity key (AgentKey, DriverKey, OwnerKey, etc.)
      * @param string $userId User ID for audit trail
+     * @param string $entityType Entity type ('agent', 'driver', or 'owner')
      * @return int CommentKey of saved comment, or 0 on failure
      */
-    public function saveComment(array $commentData, int $entityKey, string $userId): int
+    public function saveComment(array $commentData, int $entityKey, string $userId, string $entityType = 'agent'): int
     {
         try {
             // Get CommentKey or generate new one
@@ -139,7 +204,13 @@ class CommentModel extends BaseModel
 
             // Link comment to entity via junction table (ONLY for new comments)
             if ($isNewComment && $entityKey > 0) {
-                $this->linkCommentToAgent($commentKey, $entityKey);
+                if ($entityType === 'driver') {
+                    $this->linkCommentToDriver($commentKey, $entityKey);
+                } elseif ($entityType === 'owner') {
+                    $this->linkCommentToOwner($commentKey, $entityKey);
+                } else {
+                    $this->linkCommentToAgent($commentKey, $entityKey);
+                }
             }
 
             return $commentKey;
@@ -194,6 +265,56 @@ class CommentModel extends BaseModel
             return false;
         } catch (\Exception $e) {
             log_message('error', 'Error linking comment to agent: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Link comment to driver via junction table
+     * Uses spDriverComments_Save to link
+     *
+     * @param int $commentKey Comment key
+     * @param int $driverKey Driver key
+     * @return bool True on success
+     */
+    private function linkCommentToDriver(int $commentKey, int $driverKey): bool
+    {
+        try {
+            if ($commentKey > 0 && $driverKey > 0) {
+                // Link comment to driver using spDriverComments_Save
+                $this->callStoredProcedure('spDriverComments_Save', [$driverKey, $commentKey]);
+                log_message('info', "Linked CommentKey {$commentKey} to DriverKey {$driverKey}");
+                return true;
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            log_message('error', 'Error linking comment to driver: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Link comment to owner via junction table
+     * Uses spOwnerComments_Save to link
+     *
+     * @param int $commentKey Comment key
+     * @param int $ownerKey Owner key
+     * @return bool True on success
+     */
+    private function linkCommentToOwner(int $commentKey, int $ownerKey): bool
+    {
+        try {
+            if ($commentKey > 0 && $ownerKey > 0) {
+                // Link comment to owner using spOwnerComments_Save
+                $this->callStoredProcedure('spOwnerComments_Save', [$ownerKey, $commentKey]);
+                log_message('info', "Linked CommentKey {$commentKey} to OwnerKey {$ownerKey}");
+                return true;
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            log_message('error', 'Error linking comment to owner: ' . $e->getMessage());
             return false;
         }
     }

@@ -461,7 +461,11 @@ private function getDriverModel(): DriverModel
 - Performance: 2 database operations vs 150+ (75x faster)
 - Working URL: http://localhost:8888/tls-ci4/systems/user-security
 
-### ✅ Phase 6: Agent Maintenance (COMPLETE) - **OFFICIAL TEMPLATE**
+### ✅ Phase 6: Agent Maintenance (COMPLETE)
+
+**Note:** Agent Maintenance was the original template, but has been superseded by the **Base Entity Template System** (Phase 7).
+
+### ✅ Phase 7: Base Entity Template System (COMPLETE) - **OFFICIAL STANDARD**
 **Complete entity maintenance pattern established**
 
 Agent Maintenance serves as the official template for all entity maintenance screens.
@@ -506,14 +510,54 @@ Agent Maintenance serves as the official template for all entity maintenance scr
 9. New entity creation flow with immediate dependent object access
 10. Always-visible "New" button with unsaved changes protection
 
-### 📋 Next Phase: Apply Template to Other Entities
-Apply the Agent Maintenance pattern to:
-- Driver Maintenance
-- Owner Maintenance
-- Customer Maintenance
-- Unit Maintenance
-- Load Entry
-- Other entity maintenance screens
+**OFFICIAL STANDARD for all entity maintenance screens.**
+
+The Base Entity Template System provides:
+- **BaseEntityMaintenance** abstract controller (707 lines) with all 15 standard endpoints
+- **5 reusable view partials** (360 lines) for search, forms, address, contacts, comments
+- **Base view template** (140 lines) that auto-generates forms from field definitions
+- **Common JavaScript** (640 lines) for all AJAX operations
+- **Total core: 1,847 lines written once, inherited by all entities**
+
+**Creating a new entity:**
+1. Create child controller (250-450 lines) - extends BaseEntityMaintenance
+2. Implement 6 abstract methods (entity name, fields, defaults)
+3. Create tiny view wrapper (15 lines) - uses base template
+4. Add routes
+5. **Done in 15-30 minutes!**
+
+**Benefits:**
+- 78% less code per entity (457 lines vs 2,055 lines)
+- Zero find/replace needed
+- Guaranteed consistency across all entities
+- Bug fixes propagate automatically
+- Field-driven form generation
+
+**Example:** DriverMaintenance_NEW.php (442 lines) vs old DriverMaintenance.php (955 lines)
+
+**Documentation:**
+- Design: `BASE_ENTITY_TEMPLATE_DESIGN.md`
+- Progress: `BASE_TEMPLATE_PROGRESS.md`
+- Complete: `BASE_TEMPLATE_COMPLETE.md`
+
+**Files:**
+- Controller: `app/Controllers/BaseEntityMaintenance.php`
+- Partials: `app/Views/partials/entity_*.php` (5 files)
+- Base View: `app/Views/safety/base_entity_maintenance.php`
+- JavaScript: `public/js/tls-entity-maintenance.js`
+- Example: `app/Controllers/DriverMaintenance_NEW.php`
+
+---
+
+### 📋 Next Phase: Migrate to Base Template System
+Apply the Base Entity Template to:
+- ✅ Driver Maintenance (DriverMaintenance_NEW.php created, ready for testing)
+- [ ] Agent Maintenance (refactor to use base template)
+- [ ] Owner Maintenance (create using base template as proof-of-concept)
+- [ ] Customer Maintenance
+- [ ] Unit Maintenance
+- [ ] Load Entry
+- [ ] Other entity maintenance screens
 
 ## Testing
 

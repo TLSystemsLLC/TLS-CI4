@@ -162,7 +162,8 @@ $baseUrl = 'safety/' . str_replace('_', '-', strtolower($entityName)) . '-mainte
 TLSEntityMaintenance.init({
     entityName: '<?= $entityName ?>',
     entityKey: '<?= $entityKey ?>',
-    baseUrl: '<?= $baseUrl ?>'
+    baseUrl: '<?= base_url($baseUrl) ?>',
+    apiType: '<?= $apiType ?>'
 });
 </script>
 <?= $this->endSection() ?>

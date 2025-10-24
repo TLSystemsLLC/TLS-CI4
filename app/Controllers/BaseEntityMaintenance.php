@@ -16,6 +16,7 @@ use App\Models\CommentModel;
  * Child classes must implement:
  * - getEntityName() - Return 'Agent', 'Driver', 'Owner', etc.
  * - getEntityKey() - Return 'AgentKey', 'DriverKey', etc.
+ * - getSection() - Return 'safety', 'systems', etc.
  * - getMenuPermission() - Return 'mnuAgentMaint', etc.
  * - getEntityModel() - Return instance of entity's model
  * - getFormFields() - Return array of form field definitions
@@ -42,6 +43,11 @@ abstract class BaseEntityMaintenance extends BaseController
      * Get the entity key field name (e.g., 'AgentKey', 'DriverKey')
      */
     abstract protected function getEntityKey(): string;
+
+    /**
+     * Get the section name (e.g., 'safety', 'systems', 'dispatch')
+     */
+    abstract protected function getSection(): string;
 
     /**
      * Get the menu permission key (e.g., 'mnuAgentMaint')
@@ -84,11 +90,11 @@ abstract class BaseEntityMaintenance extends BaseController
     }
 
     /**
-     * Get view path (default: safety/entityname_maintenance)
+     * Get view path (default: [section]/entityname_maintenance)
      */
     protected function getViewPath(): string
     {
-        return 'safety/' . strtolower($this->getEntityName()) . '_maintenance';
+        return $this->getSection() . '/' . strtolower($this->getEntityName()) . '_maintenance';
     }
 
     /**
@@ -105,6 +111,18 @@ abstract class BaseEntityMaintenance extends BaseController
     protected function getEntityVarName(): string
     {
         return strtolower($this->getEntityName());
+    }
+
+    /**
+     * Get base URL for AJAX endpoints (relative to application base)
+     * Returns path like: 'safety/driver-maintenance' (WITHOUT tls-ci4 prefix)
+     * The view/JavaScript should use base_url() helper or prepend site base path as needed
+     */
+    protected function getBaseUrl(): string
+    {
+        // Just return section + entity path
+        // Do NOT include tls-ci4 because base_url() helper adds it automatically
+        return $this->getSection() . '/' . strtolower($this->getEntityName()) . '-maintenance';
     }
 
     // ==================== LAZY-LOADED MODEL HELPERS ====================
@@ -179,6 +197,8 @@ abstract class BaseEntityMaintenance extends BaseController
             'pageTitle' => $this->getEntityName() . ' Maintenance - TLS Operations',
             'entityName' => $this->getEntityName(),
             'entityKey' => $this->getEntityKey(),
+            'baseUrl' => $this->getBaseUrl(),
+            'apiType' => $this->getApiType(),
             'formFields' => $this->getFormFields(),
             $this->getEntityVarName() => $entity,
             'isNew' . $this->getEntityName() => $isNew
@@ -220,6 +240,8 @@ abstract class BaseEntityMaintenance extends BaseController
                 'pageTitle' => $this->getEntityName() . ' Maintenance - TLS Operations',
                 'entityName' => $this->getEntityName(),
                 'entityKey' => $this->getEntityKey(),
+                'baseUrl' => $this->getBaseUrl(),
+                'apiType' => $this->getApiType(),
                 'formFields' => $this->getFormFields(),
                 $this->getEntityVarName() => $entity,
                 'isNew' . $this->getEntityName() => false
@@ -274,6 +296,8 @@ abstract class BaseEntityMaintenance extends BaseController
                 'pageTitle' => $this->getEntityName() . ' Maintenance - TLS Operations',
                 'entityName' => $this->getEntityName(),
                 'entityKey' => $this->getEntityKey(),
+                'baseUrl' => $this->getBaseUrl(),
+                'apiType' => $this->getApiType(),
                 'formFields' => $this->getFormFields(),
                 $this->getEntityVarName() => $entity,
                 'isNew' . $this->getEntityName() => false

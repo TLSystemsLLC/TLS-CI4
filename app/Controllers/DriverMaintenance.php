@@ -28,6 +28,11 @@ class DriverMaintenance extends BaseEntityMaintenance
         return 'DriverKey';
     }
 
+    protected function getSection(): string
+    {
+        return 'safety';
+    }
+
     protected function getMenuPermission(): string
     {
         return 'mnuDriverMaint';

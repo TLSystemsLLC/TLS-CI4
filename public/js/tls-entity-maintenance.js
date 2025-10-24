@@ -36,9 +36,21 @@ const TLSEntityMaintenance = {
      * Initialize the entity maintenance screen
      */
     init(options) {
+        // If baseUrl is a full URL (starts with http), extract just the path
+        let baseUrl = options.baseUrl;
+        if (baseUrl && baseUrl.startsWith('http')) {
+            try {
+                const url = new URL(baseUrl);
+                baseUrl = url.pathname; // Extract just the path part
+            } catch (e) {
+                console.error('Failed to parse baseUrl:', e);
+            }
+        }
+
         this.config = {
             ...this.config,
             ...options,
+            baseUrl: baseUrl,
             apiType: options.apiType || (options.entityName.toLowerCase() + 's')
         };
 
@@ -254,7 +266,7 @@ const TLSEntityMaintenance = {
         formData.append('zip', document.getElementById('address-zip').value);
         formData.append('phone', document.getElementById('address-phone').value);
 
-        fetch(`/${this.config.baseUrl}/save-address`, {
+        fetch(`${this.config.baseUrl}/save-address`, {
             method: 'POST',
             body: formData
         })
@@ -282,7 +294,7 @@ const TLSEntityMaintenance = {
      * Load contact function options
      */
     loadContactFunctionOptions() {
-        fetch(`/${this.config.baseUrl}/get-contact-function-options`)
+        fetch(`${this.config.baseUrl}/get-contact-function-options`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.options) {
@@ -387,7 +399,7 @@ const TLSEntityMaintenance = {
      */
     editContact(contactKey) {
         // Find contact in current data
-        fetch(`/${this.config.baseUrl}/get-contacts?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`)
+        fetch(`${this.config.baseUrl}/get-contacts?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -428,7 +440,7 @@ const TLSEntityMaintenance = {
         formData.append('email', document.getElementById('contact-email').value);
         formData.append('primary_contact', document.getElementById('contact-primary').checked ? '1' : '0');
 
-        fetch(`/${this.config.baseUrl}/save-contact`, {
+        fetch(`${this.config.baseUrl}/save-contact`, {
             method: 'POST',
             body: formData
         })
@@ -459,7 +471,7 @@ const TLSEntityMaintenance = {
         const formData = new FormData();
         formData.append('contact_key', contactKey);
 
-        fetch(`/${this.config.baseUrl}/delete-contact`, {
+        fetch(`${this.config.baseUrl}/delete-contact`, {
             method: 'POST',
             body: formData
         })
@@ -551,7 +563,7 @@ const TLSEntityMaintenance = {
      * Edit comment
      */
     editComment(commentKey) {
-        fetch(`/${this.config.baseUrl}/get-comments?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`)
+        fetch(`${this.config.baseUrl}/get-comments?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -582,7 +594,7 @@ const TLSEntityMaintenance = {
         formData.append('comment_key', document.getElementById('comment-key').value);
         formData.append('comment', commentText);
 
-        fetch(`/${this.config.baseUrl}/save-comment`, {
+        fetch(`${this.config.baseUrl}/save-comment`, {
             method: 'POST',
             body: formData
         })
@@ -613,7 +625,7 @@ const TLSEntityMaintenance = {
         const formData = new FormData();
         formData.append('comment_key', commentKey);
 
-        fetch(`/${this.config.baseUrl}/delete-comment`, {
+        fetch(`${this.config.baseUrl}/delete-comment`, {
             method: 'POST',
             body: formData
         })

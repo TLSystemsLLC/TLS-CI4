@@ -4,20 +4,71 @@ All notable changes to the TLS-CI4 CodeIgniter 4 migration project.
 
 ## [Unreleased]
 
+### Fixed - 2025-10-24
+
+#### Base Template Layout Restructure
+**MAJOR FIX:** Implemented proper two-column layout with section-based cards matching legacy standard.
+
+**What Changed:**
+- Restructured `base_entity_maintenance.php` to proper two-column layout
+- Section-based card system: Each section becomes a separate card with icon
+- Left column: Auto-generated section cards based on field `'section'` property
+- Right column: Address, Contacts, Comments cards
+- Icon mapping for common sections (basic→person, license→card-text, pay→cash-coin, etc.)
+
+**New Features:**
+- Tax ID/PII card with show/hide protection (`entity_tax_id.php` partial)
+- Optional per entity via `hasTaxIdField()` method
+- Configurable via `getTaxIdConfig()` (SSN/EIN/Other support)
+- JavaScript PII management: `showPII()` / `hidePII()` methods
+
+**Files Changed:**
+- `app/Controllers/BaseEntityMaintenance.php` - Added `hasTaxIdField()` and `getTaxIdConfig()` methods
+- `app/Views/safety/base_entity_maintenance.php` - Complete layout restructure (197 lines)
+- `app/Views/partials/entity_tax_id.php` - NEW file for Tax ID card with PII protection
+- `public/js/tls-entity-maintenance.js` - Added PII show/hide methods
+- `CLAUDE.md` - Updated base template documentation
+- `BASE_TEMPLATE_LAYOUT_FIX_PLAN.md` - Created comprehensive fix plan
+
+**Benefits:**
+- Visual consistency across all entity maintenance screens
+- Automatic card generation from field sections
+- Simple section-based approach (just add `'section' => 'name'` to fields)
+- Icons automatically assigned based on section name
+- Responsive layout works on all screen sizes
+- Tax ID protection built-in for entities that need it
+
+**Section-Based System:**
+Controllers define fields with simple `'section'` property:
+```php
+'FirstName' => [
+    'type' => 'text',
+    'label' => 'First Name',
+    'section' => 'basic'  // ← Section becomes a card
+]
+```
+
+Template automatically:
+- Groups fields by section
+- Creates separate cards for each section
+- Assigns appropriate icons
+- Renders in two-column layout
+
 ### Added - 2025-10-24
 
 #### Base Entity Template System (Phase 7)
 **MAJOR FEATURE:** Complete reusable template system for all entity maintenance screens.
 
 **Core Template (write once, use forever):**
-- `app/Controllers/BaseEntityMaintenance.php` (707 lines) - Abstract controller with all 15 standard endpoints
+- `app/Controllers/BaseEntityMaintenance.php` (750+ lines) - Abstract controller with all 15 standard endpoints
 - `app/Views/partials/entity_search.php` (60 lines) - Reusable search section
 - `app/Views/partials/form_field_renderer.php` (90 lines) - Auto-generates form fields from definitions
 - `app/Views/partials/entity_address.php` (70 lines) - Reusable address management
 - `app/Views/partials/entity_contacts.php` (80 lines) - Reusable contact management
 - `app/Views/partials/entity_comments.php` (60 lines) - Reusable comment management
-- `app/Views/safety/base_entity_maintenance.php` (140 lines) - Base view template
-- `public/js/tls-entity-maintenance.js` (640 lines) - Generic JavaScript for all entities
+- `app/Views/partials/entity_tax_id.php` (80 lines) - Tax ID/PII card with protection (NEW)
+- `app/Views/safety/base_entity_maintenance.php` (197 lines) - Base view template with two-column layout
+- `public/js/tls-entity-maintenance.js` (680+ lines) - Generic JavaScript for all entities including PII
 
 **Example Implementation:**
 - `app/Controllers/DriverMaintenance_NEW.php` (442 lines) - Driver using base template

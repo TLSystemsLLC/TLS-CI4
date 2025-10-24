@@ -10,6 +10,38 @@ This repository contains the **CodeIgniter 4 migration** of TLS Operations, migr
 
 **Important:** This is a NEW project, separate from the legacy `/Applications/MAMP/htdocs/tls/` (tls-web) application. They share the same database backend but have different codebases.
 
+## 🚀 CREATING NEW MAINTENANCE SCREENS
+
+**READ THIS FIRST:** See `ENTITY_MAINTENANCE_GUIDE.md` for complete step-by-step instructions.
+
+Creating a new entity maintenance screen (Driver, Owner, Customer, etc.) takes **30 minutes** using the base template system. The guide shows you exactly what to implement - no guessing, no trial and error.
+
+**Critical:** Do NOT look at other entity screens for examples. The base template system is self-contained and tells you everything you need.
+
+### Recommended Prompt for Claude Code
+
+When requesting a new entity maintenance screen, use this exact prompt:
+
+```
+Create [EntityName] Maintenance following ENTITY_MAINTENANCE_GUIDE.md exactly. Do not reference any other entity screens.
+```
+
+For entity-specific customizations, use the expanded version:
+
+```
+Create [EntityName] Maintenance following ENTITY_MAINTENANCE_GUIDE.md exactly. Do not reference any other entity screens.
+
+Entity details:
+- Entity key: [EntityKey]
+- Section: [safety/accounting/dispatch/etc]
+- Menu permission: [mnuEntityMaint]
+- Has Tax ID: [yes/no]
+- Table: [tEntityName]
+- Stored procedures: [spEntity_Get, spEntity_Save, etc]
+```
+
+This ensures the guide is followed exactly without introducing variations from other implementations.
+
 ## Architecture
 
 ### Framework: CodeIgniter 4.6.3
@@ -513,39 +545,86 @@ Agent Maintenance serves as the official template for all entity maintenance scr
 **OFFICIAL STANDARD for all entity maintenance screens.**
 
 The Base Entity Template System provides:
-- **BaseEntityMaintenance** abstract controller (707 lines) with all 15 standard endpoints
-- **5 reusable view partials** (360 lines) for search, forms, address, contacts, comments
-- **Base view template** (140 lines) that auto-generates forms from field definitions
-- **Common JavaScript** (640 lines) for all AJAX operations
-- **Total core: 1,847 lines written once, inherited by all entities**
+- **BaseEntityMaintenance** abstract controller (750+ lines) with all 15 standard endpoints
+- **6 reusable view partials** (400+ lines) for search, forms, address, contacts, comments, Tax ID
+- **Base view template** (197 lines) with two-column layout and section-based cards
+- **Common JavaScript** (680+ lines) for all AJAX operations including PII management
+- **Total core: 2,000+ lines written once, inherited by all entities**
+
+**Two-Column Layout Architecture:**
+The base template creates a responsive two-column layout:
+
+**Left Column:**
+- Auto-generated section cards based on field `'section'` property
+- Each section becomes a separate card with icon
+- Tax ID/PII card (optional, with show/hide protection)
+
+**Right Column:**
+- Address card
+- Contacts card
+- Comments card
+
+**Section-Based Card System:**
+Controllers define fields with a simple `'section'` property:
+```php
+'FirstName' => [
+    'type' => 'text',
+    'label' => 'First Name',
+    'section' => 'basic'  // ← Section name (becomes card)
+]
+```
+
+The base template automatically:
+- Groups fields by section
+- Creates separate cards for each section
+- Assigns icons based on section name (basic→person, license→card-text, pay→cash-coin)
+- Renders in responsive two-column layout
+
+**Common Section Names & Icons:**
+- `basic` → bi-person
+- `employment` → bi-briefcase
+- `license` → bi-card-text
+- `certification` → bi-patch-check
+- `pay` → bi-cash-coin
+- `company` → bi-building
+- `characteristics` → bi-list-check
+
+**Tax ID / PII Protection:**
+Optional Tax ID card with PII protection:
+- Controllers opt-in via `hasTaxIdField(): bool` (default: false)
+- Show/Hide button to reveal sensitive information
+- Configurable via `getTaxIdConfig()` (SSN/EIN/Other)
+- JavaScript methods: `showPII()` / `hidePII()`
 
 **Creating a new entity:**
 1. Create child controller (250-450 lines) - extends BaseEntityMaintenance
-2. Implement 6 abstract methods (entity name, fields, defaults)
-3. Create tiny view wrapper (15 lines) - uses base template
-4. Add routes
-5. **Done in 15-30 minutes!**
+2. Implement 7 abstract methods (entity name, section, fields, defaults, save logic)
+3. Add `'section'` property to each field definition
+4. Optional: Enable Tax ID via `hasTaxIdField()`
+5. Create tiny view wrapper (15 lines) - uses base template
+6. Add routes
+7. **Done in 15-30 minutes!**
 
 **Benefits:**
-- 78% less code per entity (457 lines vs 2,055 lines)
+- 78% less code per entity (450 lines vs 2,000+ lines)
 - Zero find/replace needed
 - Guaranteed consistency across all entities
 - Bug fixes propagate automatically
-- Field-driven form generation
-
-**Example:** DriverMaintenance_NEW.php (442 lines) vs old DriverMaintenance.php (955 lines)
+- Field-driven form generation with automatic card layout
+- Section cards automatically adapt to field definitions
 
 **Documentation:**
+- Layout Fix Plan: `BASE_TEMPLATE_LAYOUT_FIX_PLAN.md`
 - Design: `BASE_ENTITY_TEMPLATE_DESIGN.md`
 - Progress: `BASE_TEMPLATE_PROGRESS.md`
 - Complete: `BASE_TEMPLATE_COMPLETE.md`
 
 **Files:**
 - Controller: `app/Controllers/BaseEntityMaintenance.php`
-- Partials: `app/Views/partials/entity_*.php` (5 files)
+- Partials: `app/Views/partials/entity_*.php` (6 files including Tax ID)
 - Base View: `app/Views/safety/base_entity_maintenance.php`
 - JavaScript: `public/js/tls-entity-maintenance.js`
-- Example: `app/Controllers/DriverMaintenance_NEW.php`
+- Example: `app/Controllers/DriverMaintenance.php`
 
 ---
 

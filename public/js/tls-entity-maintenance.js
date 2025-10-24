@@ -181,7 +181,7 @@ const TLSEntityMaintenance = {
      * Load address
      */
     loadAddress() {
-        const url = `/${this.config.baseUrl}/get-address?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`;
+        const url = `${this.config.baseUrl}/get-address?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`;
 
         fetch(url)
             .then(response => response.json())
@@ -254,6 +254,13 @@ const TLSEntityMaintenance = {
      * Save address
      */
     saveAddress() {
+        // Disable save button and show loading state
+        const saveBtn = document.getElementById('save-address-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+        }
+
         const formData = new FormData();
         formData.append(this.config.entityKey.toLowerCase(), this.currentEntityKey);
         formData.append('name_key', document.getElementById('address-name-key').value);
@@ -272,6 +279,12 @@ const TLSEntityMaintenance = {
         })
         .then(response => response.json())
         .then(data => {
+            // Re-enable button
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi-check-circle me-1"></i>Save Address';
+            }
+
             if (data.success) {
                 this.cancelEditAddress();
                 if (data.address) {
@@ -279,10 +292,18 @@ const TLSEntityMaintenance = {
                 }
                 alert('Address saved successfully');
             } else {
-                alert('Error saving address: ' + (data.message || 'Unknown error'));
+                console.error('Error saving address:', data.message || 'Unknown error');
+                console.error('Full response:', data);
+                alert('Error saving address');
             }
         })
         .catch(error => {
+            // Re-enable button on error
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi-check-circle me-1"></i>Save Address';
+            }
+
             console.error('Error saving address:', error);
             alert('Error saving address');
         });
@@ -298,7 +319,11 @@ const TLSEntityMaintenance = {
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.options) {
-                    this.contactFunctionOptions = data.options;
+                    // Convert array [{Code, Description}] to object {Code: Description}
+                    this.contactFunctionOptions = {};
+                    data.options.forEach(option => {
+                        this.contactFunctionOptions[option.Code] = option.Description;
+                    });
                     this.populateContactFunctionDropdown();
                 }
             })
@@ -327,7 +352,7 @@ const TLSEntityMaintenance = {
      * Load contacts
      */
     loadContacts() {
-        const url = `/${this.config.baseUrl}/get-contacts?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`;
+        const url = `${this.config.baseUrl}/get-contacts?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`;
 
         fetch(url)
             .then(response => response.json())
@@ -430,6 +455,13 @@ const TLSEntityMaintenance = {
             return;
         }
 
+        // Disable save button and show loading state
+        const saveBtn = document.getElementById('save-contact-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+        }
+
         const formData = new FormData();
         formData.append(this.config.entityKey.toLowerCase(), this.currentEntityKey);
         formData.append('contact_key', document.getElementById('contact-key').value);
@@ -446,15 +478,29 @@ const TLSEntityMaintenance = {
         })
         .then(response => response.json())
         .then(data => {
+            // Re-enable button
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi-check-circle me-1"></i>Save Contact';
+            }
+
             if (data.success) {
                 this.contactModal.hide();
                 this.loadContacts();
                 alert('Contact saved successfully');
             } else {
-                alert('Error saving contact: ' + (data.message || 'Unknown error'));
+                console.error('Error saving contact:', data.message || 'Unknown error');
+                console.error('Full response:', data);
+                alert('Error saving contact');
             }
         })
         .catch(error => {
+            // Re-enable button on error
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi-check-circle me-1"></i>Save Contact';
+            }
+
             console.error('Error saving contact:', error);
             alert('Error saving contact');
         });
@@ -496,7 +542,7 @@ const TLSEntityMaintenance = {
      * Load comments
      */
     loadComments() {
-        const url = `/${this.config.baseUrl}/get-comments?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`;
+        const url = `${this.config.baseUrl}/get-comments?${this.config.entityKey.toLowerCase()}=${this.currentEntityKey}`;
 
         fetch(url)
             .then(response => response.json())
@@ -589,6 +635,13 @@ const TLSEntityMaintenance = {
             return;
         }
 
+        // Disable save button and show loading state
+        const saveBtn = document.getElementById('save-comment-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+        }
+
         const formData = new FormData();
         formData.append(this.config.entityKey.toLowerCase(), this.currentEntityKey);
         formData.append('comment_key', document.getElementById('comment-key').value);
@@ -600,15 +653,29 @@ const TLSEntityMaintenance = {
         })
         .then(response => response.json())
         .then(data => {
+            // Re-enable button
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi-check-circle me-1"></i>Save Comment';
+            }
+
             if (data.success) {
                 this.commentModal.hide();
                 this.loadComments();
                 alert('Comment saved successfully');
             } else {
-                alert('Error saving comment: ' + (data.message || 'Unknown error'));
+                console.error('Error saving comment:', data.message || 'Unknown error');
+                console.error('Full response:', data);
+                alert('Error saving comment');
             }
         })
         .catch(error => {
+            // Re-enable button on error
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi-check-circle me-1"></i>Save Comment';
+            }
+
             console.error('Error saving comment:', error);
             alert('Error saving comment');
         });
@@ -642,6 +709,253 @@ const TLSEntityMaintenance = {
             console.error('Error deleting comment:', error);
             alert('Error deleting comment');
         });
+    },
+
+    // ==================== PII / TAX ID MANAGEMENT ====================
+
+    /**
+     * Show PII/Tax ID section
+     */
+    showPII() {
+        const showSection = document.getElementById('show_pii_section');
+        const taxIdSection = document.getElementById('tax_id_section');
+
+        if (showSection && taxIdSection) {
+            showSection.style.display = 'none';
+            taxIdSection.style.display = 'block';
+
+            // Log PII access (in production, this should also log server-side)
+            console.warn('PII ACCESS: Tax ID information revealed by user');
+
+            // Initialize Tax ID formatting when revealed
+            this.initTaxIdFormatting();
+        }
+    },
+
+    /**
+     * Hide PII/Tax ID section
+     */
+    hidePII() {
+        const showSection = document.getElementById('show_pii_section');
+        const taxIdSection = document.getElementById('tax_id_section');
+
+        if (showSection && taxIdSection) {
+            showSection.style.display = 'block';
+            taxIdSection.style.display = 'none';
+        }
+    },
+
+    /**
+     * Initialize Tax ID formatting (SSN/EIN/Other)
+     */
+    initTaxIdFormatting() {
+        const taxIdField = document.getElementById('tax_id');
+        const idTypeField = document.getElementById('id_type');
+        if (!taxIdField) return;
+
+        // Apply initial input mask based on ID type
+        this.applyInputMask();
+
+        // Add change listener to ID type dropdown
+        if (idTypeField) {
+            idTypeField.addEventListener('change', () => this.applyInputMask());
+        }
+
+        // Add input event listener
+        taxIdField.addEventListener('input', (event) => this.handleTaxIdInputEvent(event));
+
+        // Add keydown listener to prevent invalid characters
+        taxIdField.addEventListener('keydown', (event) => {
+            const allowedKeys = [
+                'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                'Home', 'End'
+            ];
+
+            // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+Z
+            if (event.ctrlKey || event.metaKey) {
+                const ctrlKeys = ['a', 'c', 'v', 'x', 'z'];
+                if (ctrlKeys.includes(event.key.toLowerCase())) {
+                    return;
+                }
+            }
+
+            // Check if it's a digit
+            const isDigit = /^[0-9]$/.test(event.key);
+
+            if (!allowedKeys.includes(event.key) && !isDigit) {
+                event.preventDefault();
+                return false;
+            }
+        });
+
+        // Add paste event listener
+        taxIdField.addEventListener('paste', (event) => {
+            event.preventDefault();
+
+            const pastedText = (event.clipboardData || window.clipboardData).getData('text');
+            const digitsOnly = pastedText.replace(/\D/g, '');
+            const limitedDigits = digitsOnly.substring(0, 9);
+
+            if (limitedDigits.length > 0) {
+                const currentValue = taxIdField.value;
+                const cursorPosition = taxIdField.selectionStart;
+                const beforeCursor = currentValue.substring(0, cursorPosition);
+                const afterCursor = currentValue.substring(cursorPosition);
+                const beforeDigits = beforeCursor.replace(/\D/g, '');
+                const afterDigits = afterCursor.replace(/\D/g, '');
+                const combinedDigits = (beforeDigits + limitedDigits + afterDigits).substring(0, 9);
+
+                taxIdField.value = combinedDigits;
+                this.handleTaxIdInputEvent();
+            }
+        });
+    },
+
+    /**
+     * Apply input mask based on ID type (SSN/EIN/Other)
+     */
+    applyInputMask() {
+        const idTypeField = document.getElementById('id_type');
+        const taxIdField = document.getElementById('tax_id');
+
+        if (!idTypeField || !taxIdField) return;
+
+        const idType = idTypeField.value;
+
+        // Remove existing formatting for fresh start
+        const digitsOnly = taxIdField.value.replace(/\D/g, '');
+
+        switch(idType) {
+            case 'S': // SSN: XXX-XX-XXXX
+                taxIdField.maxLength = 11;
+                taxIdField.placeholder = "___-__-____";
+                if (digitsOnly.length > 0) {
+                    taxIdField.value = this.formatSSN(digitsOnly);
+                } else {
+                    taxIdField.value = '';
+                }
+                break;
+            case 'E': // EIN: XX-XXXXXXX
+                taxIdField.maxLength = 10;
+                taxIdField.placeholder = "__-_______";
+                if (digitsOnly.length > 0) {
+                    taxIdField.value = this.formatEIN(digitsOnly);
+                } else {
+                    taxIdField.value = '';
+                }
+                break;
+            case 'O': // Other: No formatting
+                taxIdField.maxLength = 20;
+                taxIdField.placeholder = "Enter Tax ID";
+                taxIdField.value = digitsOnly;
+                break;
+            default: // Default to Other
+                taxIdField.maxLength = 20;
+                taxIdField.placeholder = "Enter Tax ID";
+                taxIdField.value = digitsOnly;
+                break;
+        }
+    },
+
+    /**
+     * Format SSN as XXX-XX-XXXX
+     */
+    formatSSN(digits) {
+        if (digits.length >= 9) {
+            return digits.substring(0,3) + '-' + digits.substring(3,5) + '-' + digits.substring(5,9);
+        } else if (digits.length >= 5) {
+            return digits.substring(0,3) + '-' + digits.substring(3,5) + '-' + digits.substring(5);
+        } else if (digits.length >= 3) {
+            return digits.substring(0,3) + '-' + digits.substring(3);
+        }
+        return digits;
+    },
+
+    /**
+     * Format EIN as XX-XXXXXXX
+     */
+    formatEIN(digits) {
+        if (digits.length >= 9) {
+            return digits.substring(0,2) + '-' + digits.substring(2,9);
+        } else if (digits.length >= 2) {
+            return digits.substring(0,2) + '-' + digits.substring(2);
+        }
+        return digits;
+    },
+
+    /**
+     * Handle Tax ID input event - routes to correct handler based on type
+     */
+    handleTaxIdInputEvent(event) {
+        const idTypeField = document.getElementById('id_type');
+        if (!idTypeField) return;
+
+        const idType = idTypeField.value;
+
+        if (idType === 'S') {
+            this.handleSSNInput(event);
+        } else if (idType === 'E') {
+            this.handleEINInput(event);
+        }
+        // For 'O' (Other), no formatting needed
+    },
+
+    /**
+     * Handle SSN input with formatting
+     */
+    handleSSNInput(event) {
+        const taxIdField = document.getElementById('tax_id');
+        if (!taxIdField) return;
+
+        let value = taxIdField.value;
+
+        // Remove all non-digits
+        const digitsOnly = value.replace(/\D/g, '');
+
+        // Limit to 9 digits max
+        const limitedDigits = digitsOnly.substring(0, 9);
+
+        // Format as XXX-XX-XXXX
+        let formattedValue = '';
+        if (limitedDigits.length > 0) {
+            formattedValue = limitedDigits.substring(0, 3);
+            if (limitedDigits.length > 3) {
+                formattedValue += '-' + limitedDigits.substring(3, 5);
+                if (limitedDigits.length > 5) {
+                    formattedValue += '-' + limitedDigits.substring(5, 9);
+                }
+            }
+        }
+
+        taxIdField.value = formattedValue;
+    },
+
+    /**
+     * Handle EIN input with formatting
+     */
+    handleEINInput(event) {
+        const taxIdField = document.getElementById('tax_id');
+        if (!taxIdField) return;
+
+        let value = taxIdField.value;
+
+        // Remove all non-digits
+        const digitsOnly = value.replace(/\D/g, '');
+
+        // Limit to 9 digits max
+        const limitedDigits = digitsOnly.substring(0, 9);
+
+        // Format as XX-XXXXXXX
+        let formattedValue = '';
+        if (limitedDigits.length > 0) {
+            formattedValue = limitedDigits.substring(0, 2);
+            if (limitedDigits.length > 2) {
+                formattedValue += '-' + limitedDigits.substring(2, 9);
+            }
+        }
+
+        taxIdField.value = formattedValue;
     }
 };
 

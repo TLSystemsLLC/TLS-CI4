@@ -125,6 +125,29 @@ abstract class BaseEntityMaintenance extends BaseController
         return $this->getSection() . '/' . strtolower($this->getEntityName()) . '-maintenance';
     }
 
+    /**
+     * Whether this entity has a Tax ID field with PII protection
+     * Override to return true if entity needs Tax ID card
+     * Default: false
+     */
+    protected function hasTaxIdField(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Get Tax ID configuration
+     * Override to customize Tax ID field settings
+     */
+    protected function getTaxIdConfig(): array
+    {
+        return [
+            'types' => ['S' => 'SSN', 'E' => 'EIN', 'O' => 'Other'],
+            'field_name' => 'TaxID',
+            'type_field_name' => 'IDType'
+        ];
+    }
+
     // ==================== LAZY-LOADED MODEL HELPERS ====================
 
     /**
@@ -200,6 +223,8 @@ abstract class BaseEntityMaintenance extends BaseController
             'baseUrl' => $this->getBaseUrl(),
             'apiType' => $this->getApiType(),
             'formFields' => $this->getFormFields(),
+            'hasTaxIdField' => $this->hasTaxIdField(),
+            'taxIdConfig' => $this->getTaxIdConfig(),
             $this->getEntityVarName() => $entity,
             'isNew' . $this->getEntityName() => $isNew
         ];
@@ -234,20 +259,10 @@ abstract class BaseEntityMaintenance extends BaseController
         }
 
         if ($entity) {
-            $this->session->setFlashdata('success', $this->getEntityName() . ' loaded successfully.');
-
-            $data = [
-                'pageTitle' => $this->getEntityName() . ' Maintenance - TLS Operations',
-                'entityName' => $this->getEntityName(),
-                'entityKey' => $this->getEntityKey(),
-                'baseUrl' => $this->getBaseUrl(),
-                'apiType' => $this->getApiType(),
-                'formFields' => $this->getFormFields(),
-                $this->getEntityVarName() => $entity,
-                'isNew' . $this->getEntityName() => false
-            ];
-
-            return $this->renderView($this->getViewPath(), $data);
+            // Redirect to load URL to keep clean URLs
+            $key = $entity[$this->getEntityKey()];
+            return redirect()->to($this->getBaseUrl() . '/load/' . $key)
+                ->with('success', $this->getEntityName() . ' loaded successfully.');
         } else {
             return redirect()->to('/' . $this->getViewPath())
                 ->with('warning', $this->getEntityName() . ' not found.');
@@ -299,6 +314,8 @@ abstract class BaseEntityMaintenance extends BaseController
                 'baseUrl' => $this->getBaseUrl(),
                 'apiType' => $this->getApiType(),
                 'formFields' => $this->getFormFields(),
+                'hasTaxIdField' => $this->hasTaxIdField(),
+                'taxIdConfig' => $this->getTaxIdConfig(),
                 $this->getEntityVarName() => $entity,
                 'isNew' . $this->getEntityName() => false
             ];
@@ -456,10 +473,11 @@ abstract class BaseEntityMaintenance extends BaseController
                 ]);
             }
         } catch (\Exception $e) {
-            log_message('error', 'Error saving address: ' . $e->getMessage());
+            log_message('error', 'Error saving address for ' . $this->getEntityName() . ': ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Database error occurred'
+                'message' => 'Database error occurred: ' . $e->getMessage()
             ]);
         }
     }
@@ -595,6 +613,9 @@ abstract class BaseEntityMaintenance extends BaseController
 
         try {
             $options = $this->getEntityModel()->getValidationOptions('ContactFunction');
+
+            log_message('info', 'ContactFunction options loaded: ' . count($options) . ' options');
+            log_message('debug', 'ContactFunction options: ' . json_encode($options));
 
             return $this->response->setJSON([
                 'success' => true,

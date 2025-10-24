@@ -216,17 +216,31 @@ class TLSFormTracker {
 
     validateForm() {
         // Basic validation - can be overridden
+        // IMPORTANT: Only validate fields that are INSIDE this.form, but NOT in modals
         const requiredFields = this.form.querySelectorAll('[required]');
         let isValid = true;
+        let invalidFields = [];
 
         requiredFields.forEach(field => {
-            if (!field.value.trim()) {
+            // Skip fields that are inside modals (modals have .modal class as ancestor)
+            if (field.closest('.modal')) {
+                return; // Skip modal fields
+            }
+
+            if (!field.value || !field.value.trim()) {
                 field.classList.add('is-invalid');
                 isValid = false;
+                const fieldLabel = field.getAttribute('name') || field.getAttribute('id') || 'unknown field';
+                invalidFields.push(fieldLabel);
             } else {
                 field.classList.remove('is-invalid');
             }
         });
+
+        if (!isValid) {
+            console.error('TLS Form Tracker: Validation failed. Missing required fields:', invalidFields);
+            alert('Please fill in all required fields: ' + invalidFields.join(', '));
+        }
 
         return isValid;
     }

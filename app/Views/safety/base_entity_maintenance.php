@@ -5,6 +5,12 @@
     .readonly-field {
         background-color: #f8f9fa;
     }
+    .tls-pii-section {
+        border: 2px solid #ffc107;
+    }
+    .tls-pii-section .card-header {
+        background-color: #fff3cd;
+    }
 </style>
 <?= $this->endSection() ?>
 
@@ -22,13 +28,37 @@
  * - $formFields (array): Field definitions from controller
  * - ${entityVarName} (array): Current entity data (e.g., $driver, $agent)
  * - $isNew{EntityName} (bool): Whether this is a new entity
+ * - $hasTaxIdField (bool): Whether to show Tax ID card
+ * - $taxIdConfig (array): Tax ID configuration
  */
 
 $entityVar = strtolower($entityName);
 $entityKeyLower = strtolower($entityKey);
 $isNew = ${'isNew' . $entityName} ?? false;
 $entity = ${$entityVar} ?? null;
-$baseUrl = 'safety/' . str_replace('_', '-', strtolower($entityName)) . '-maintenance';
+// Note: $baseUrl is passed from controller, don't override it here
+
+// Section icon mapping
+$sectionIcons = [
+    'basic' => 'bi-person',
+    'employment' => 'bi-briefcase',
+    'license' => 'bi-card-text',
+    'certification' => 'bi-patch-check',
+    'pay' => 'bi-cash-coin',
+    'company' => 'bi-building',
+    'characteristics' => 'bi-list-check',
+    'default' => 'bi-info-circle'
+];
+
+// Group fields by section
+$sections = [];
+foreach ($formFields as $fieldName => $fieldConfig) {
+    $section = $fieldConfig['section'] ?? 'default';
+    if (!isset($sections[$section])) {
+        $sections[$section] = [];
+    }
+    $sections[$section][$fieldName] = $fieldConfig;
+}
 ?>
 
 <!-- Standardized Page Header -->
@@ -73,79 +103,76 @@ $baseUrl = 'safety/' . str_replace('_', '-', strtolower($entityName)) . '-mainte
     <?= csrf_field() ?>
     <input type="hidden" name="<?= $entityKeyLower ?>" value="<?= esc($entity[$entityKey] ?? 0) ?>">
 
-    <!-- Form Fields Card -->
-    <div class="tls-form-card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">
-                <i class="bi-info-circle me-2"></i><?= esc($entityName) ?> Information
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <!-- Auto-generated fields from controller definition -->
-                <?php
-                // Group fields by section if defined
-                $sections = [];
-                foreach ($formFields as $fieldName => $fieldConfig) {
-                    $section = $fieldConfig['section'] ?? 'default';
-                    if (!isset($sections[$section])) {
-                        $sections[$section] = [];
-                    }
-                    $sections[$section][$fieldName] = $fieldConfig;
-                }
-
-                // Render each section
-                foreach ($sections as $sectionName => $sectionFields):
-                    if ($sectionName !== 'default'):
-                ?>
-                    <div class="col-12">
-                        <h6 class="border-bottom pb-2 mb-3"><?= ucwords(str_replace('_', ' ', $sectionName)) ?></h6>
+    <!-- Two-column layout starting immediately after search -->
+    <div class="row">
+        <!-- LEFT COLUMN: Entity Information Cards -->
+        <div class="col-lg-6">
+            <?php
+            // Render each section as a separate card
+            $firstCard = true;
+            foreach ($sections as $sectionName => $sectionFields):
+                $icon = $sectionIcons[$sectionName] ?? $sectionIcons['default'];
+                $cardTitle = ucwords(str_replace('_', ' ', $sectionName));
+            ?>
+                <div class="tls-form-card<?= $firstCard ? '' : ' mt-3' ?>">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi <?= $icon ?> me-2"></i><?= esc($cardTitle) ?>
+                        </h5>
                     </div>
-                <?php
-                    endif;
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <?php
+                            // Render fields in this section
+                            foreach ($sectionFields as $fieldName => $fieldConfig):
+                                echo view('partials/form_field_renderer', [
+                                    'name' => $fieldName,
+                                    'config' => $fieldConfig,
+                                    'value' => $entity[$fieldName] ?? null,
+                                    'entity' => $entity
+                                ]);
+                            endforeach;
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            <?php
+                $firstCard = false;
+            endforeach;
+            ?>
 
-                    // Render fields in this section
-                    foreach ($sectionFields as $fieldName => $fieldConfig):
-                        echo view('partials/form_field_renderer', [
-                            'name' => $fieldName,
-                            'config' => $fieldConfig,
-                            'value' => $entity[$fieldName] ?? null,
-                            'entity' => $entity
-                        ]);
-                    endforeach;
-                endforeach;
-                ?>
-            </div>
+            <?php if ($hasTaxIdField): ?>
+                <!-- Tax ID Card (optional, with PII protection) -->
+                <?= view('partials/entity_tax_id', [
+                    'entity' => $entity,
+                    'entityKey' => $entityKey,
+                    'taxIdConfig' => $taxIdConfig
+                ]) ?>
+            <?php endif; ?>
+        </div>
+
+        <!-- RIGHT COLUMN: Address, Contacts, Comments -->
+        <div class="col-lg-6">
+            <?= view('partials/entity_address', [
+                'entityName' => $entityName,
+                'entityKey' => $entityKey,
+                'entity' => $entity
+            ]) ?>
+
+            <?= view('partials/entity_contacts', [
+                'entityName' => $entityName,
+                'entityKey' => $entityKey,
+                'entity' => $entity
+            ]) ?>
+
+            <?= view('partials/entity_comments', [
+                'entityName' => $entityName,
+                'entityKey' => $entityKey,
+                'entity' => $entity
+            ]) ?>
         </div>
     </div>
 </form>
-
-<!-- Two-column layout for Address, Contacts, Comments -->
-<div class="row">
-    <!-- Left Column: Address -->
-    <div class="col-md-6">
-        <?= view('partials/entity_address', [
-            'entityName' => $entityName,
-            'entityKey' => $entityKey,
-            'entity' => $entity
-        ]) ?>
-    </div>
-
-    <!-- Right Column: Contacts and Comments -->
-    <div class="col-md-6">
-        <?= view('partials/entity_contacts', [
-            'entityName' => $entityName,
-            'entityKey' => $entityKey,
-            'entity' => $entity
-        ]) ?>
-
-        <?= view('partials/entity_comments', [
-            'entityName' => $entityName,
-            'entityKey' => $entityKey,
-            'entity' => $entity
-        ]) ?>
-    </div>
-</div>
 
 <?php endif; // if ($entity) ?>
 
